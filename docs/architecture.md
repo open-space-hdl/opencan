@@ -15,8 +15,8 @@ the CAN 2.0B controller `olo_intf_can` of Open Logic, used once or twice dependi
 
 ### In scope
 
-The scope below is the proposal of this document. Section 6.1 lists the interpretation questions whose answers fix
-it; the traceability matrix (section 10) assigns every clause of the standard to a module or marks it out of scope.
+The architecture decisions of section 6.1 fix the scope; the traceability matrix (section 10) assigns every clause of
+the standard to a module or marks it out of scope.
 
 - Data link layer on the nominal and the redundant bus (clauses 5.4 and 5.6) with `olo_intf_can`.
 - Both node-internal bus redundancy architectures of clause 8.2 (selective and parallel bus access), selected by a
@@ -24,11 +24,11 @@ it; the traceability matrix (section 10) assigns every clause of the standard to
 - Bus monitoring and reconfiguration of clause 8.3 for a slave node: start-up on the default bus, heartbeat
   consumption of the Redundancy Master, bus toggling and the update of the default bus.
 - CANopen services of clause 6 for a slave node: NMT state machine and module control, boot-up, heartbeat, SYNC
-  consumption, process data objects, an SDO server and the object dictionary entries of the communication profile and
-  of clause 8.
+  consumption, process data objects, an SDO server (expedited and segmented transfer) and the object dictionary
+  entries of the communication profile and of clause 8.
 - Node and COB identifier handling of clause 6.10, including the protection against single point failures.
 - The minimal protocol set of clause 9 as a configuration of the same modules.
-- Spacecraft elapsed time (SCET) and the time distribution protocols of clause 7 for a time consumer.
+- Spacecraft elapsed time (SCET) with both time distribution protocols of clause 7.2 for a time consumer.
 
 ### Out of scope
 
@@ -38,7 +38,9 @@ it; the traceability matrix (section 10) assigns every clause of the standard to
 - Electronic data sheets and device configuration files (clause 6.6) and device profiles (clause 6.7): they describe a
   particular device. The documentation provides the object dictionary of OpenCAN as the basis of a device's EDS.
 - Hot and warm bus redundancy and node redundancy, which the standard leaves to the application (clause 4.8.1).
-- The Redundancy Master, NMT master, SYNC producer and time producer roles, unless question Q1 decides otherwise.
+- The Redundancy Master, NMT master, SYNC producer and time producer roles (D1).
+- The emergency object of clause 6.4 (D9) and the spacecraft UTC of clauses 7.1.1b and 7.1.3 (D5).
+- SDO block transfer and dynamic PDO mapping (D3, D7).
 
 ### Target technology
 
@@ -65,8 +67,9 @@ synchronisers.
 
 ### Conventions
 
-Clauses of \[ECSS\] are cited by number and requirement letter (8.3.3e). CANopen objects are cited by their
-object dictionary index in hexadecimal (1017h). The rules of the repository are in [conventions](conventions.md).
+Clauses of \[ECSS\] are cited by number and requirement letter (8.3.3e), sections of \[CiA301\] by their number.
+CANopen objects are cited by their object dictionary index in hexadecimal (1017h). The rules of the repository are in
+[conventions](conventions.md).
 
 ## 2 ECSS-E-ST-50-15C functional overview
 
@@ -139,29 +142,9 @@ initiator of exchanges (unconfirmed commands and telemetry requests).
 
 ## 6 Architecture overview
 
-```text
-                 +------------------------------------------------------------------+
-  Node-ID  ----->| ocan_nmt        NMT state machine, boot-up, heartbeat producer   |
-  (protected)    |                 module control, NODE-ID check                    |
-                 +---------------------------^--------------------------------------+
-                                             |
-                 +------------------+  +-----+-----------+  +----------------------+
-  PDO data <---->| ocan_pdo         |  | ocan_dispatch   |  | ocan_redundancy      |
-  (streams)      | RPDO, TPDO, SYNC |<>| COB-ID filter,  |<>| bus selection,       |
-                 +------------------+  | TX arbitration  |  | master heartbeat     |
-                 +------------------+  +-----+-----------+  | consumer, toggling   |
-  Object   <---->| ocan_od, ocan_sdo|<>------|              +----------+-----------+
-  access port    | object dictionary|        |                         | active bus
-                 +------------------+  +-----v-------------------------v-----------+
-  Time     <---->| ocan_time        |  | ocan_link   selective: 1 x olo_intf_can   |
-  (SCET)         | SCET, time PDOs  |  |             + bus selector               |
-                 +------------------+  |             parallel: 2 x olo_intf_can   |
-                                       +------------+--------------+--------------+
-                                                    | bus A        | bus B
-                                               transceiver A   transceiver B
-```
-
-The block diagram is drawn in draw.io once the interpretation questions are answered.
+![OpenCAN core: network management, process data, SDO server, object dictionary and time blocks connected through
+the dispatch to the link with one or two olo_intf_can controllers for bus A and bus B; the redundancy block controls
+the active bus](img/ocan_core_overview.drawio.svg)
 
 | Block | Function | Clauses |
 | --- | --- | --- |
@@ -175,23 +158,20 @@ The block diagram is drawn in draw.io once the interpretation questions are answ
 | `ocan_time` | Local SCET, Spacecraft Time PDO consumer, Local Time PDO producer, sample at SYNC | 7 |
 | `ocan_core` | Top level, generics and ports | all |
 
-### 6.1 Interpretation questions
+### 6.1 Architecture decisions
 
-Each question names the options, the clauses involved and a recommendation. The answers become the architecture
-decisions of this section and fix the scope of section 1.
-
-| ID | Question | Options | Recommendation |
-| --- | --- | --- | --- |
-| Q1 | Node role | Slave node only; Redundancy Master (NMT master, SYNC and time producer) only; both, selected by a generic | Slave node in phases b and c. The master is usually the platform computer and needs a scheduler for SYNC, time and NMT commands; a master role can follow in a later phase on the same blocks (heartbeat producer on the active bus, bus switch command, clause 8.3.3a, b, f). |
-| Q2 | CANopen level | Clause 6 only; clause 9 minimal set only; both, selected by a generic | Both: the minimal set is a strict subset of the clause 6 slave (module control, boot-up and emergency disabled, fixed PDO parameters), so a generic `MinimalSet_g` costs little and covers the simplest units. |
-| Q3 | SDO server (clause 6.1, 8.3.1c) | None; expedited only; expedited and segmented; with block transfer | Expedited and segmented, no block transfer. Clause 8.3.1c requires the redundancy parameters to be programmable through SDO for a clause 6 node; all of them fit an expedited transfer, but the SCET objects of clause 7.1.2 have 7 bytes and need the segmented protocol. The SDO server is absent in the minimal set. |
-| Q4 | Bus access architecture (clause 8.2) | Selective; parallel; both, selected by a generic | Both. Selective bus access as the default (one controller, the toggling protocol of clause 8.3.3 is made for it); parallel bus access with the controller of the inactive bus in listen-only mode, which also allows a later master role to listen passively on the redundant bus (clause 8.2.2, note 3). |
-| Q5 | Time distribution (clause 7) | None; SCET with the time distribution protocol; plus the high-resolution protocol; plus UTC | SCET with both protocols of clause 7.2 for a time consumer: the local SCET counter (32-bit coarse time, fine time width by generic, 0 to 24 bits), the Spacecraft Time PDO sets it, the Local Time PDO returns it, both sampled at the SYNC for the high-resolution protocol. UTC (optional, clause 7.1.1b) in a later phase. |
-| Q6 | Application interface | Native ports (PDO data streams, object access port, status); a register interface (AXI4-Lite) for a processor; both | Native ports as the base, so that a unit without a processor works; an AXI4-Lite register bank for configuration and status as an optional wrapper in a later phase. |
-| Q7 | PDOs | Number per direction; static or configurable mapping | Up to four receive and four transmit PDOs by generic, with the COB-IDs of the pre-defined connection set as defaults (\[CiA301\] 7.3.3, clause 9.3). Static mapping: the eight data bytes of a PDO pass to and from the user logic, the mapping objects (1600h, 1A00h) are read-only and describe the static mapping (allowed by clause 9.4.10e note and 9.4.5). |
-| Q8 | NODE-ID and COB-ID protection (clause 6.10d to k) | NODE-ID from pins without check; from pins with a protection code; from a register | NODE-ID from pins with a protection code (the identifier and its complement), sampled at reset; the node does not communicate until the code is valid (6.10f). COB-IDs default to the pre-defined connection set, change only through SDO in Pre-operational and are held in registers whose single upset the core detects (duplicated with a compare). |
-| Q9 | Emergency object (clause 6.4, optional) | Not implemented; implemented with all error codes | Not implemented: the object is optional, clause 11 lists the EMCY service as not required, and if implemented clause 6.4b requires all CANopen error codes. The optional EMCY before a bus switch (clause 8.3.3, note 2) is therefore not sent. |
-| Q10 | Source of \[CiA301\] | The detailed protocols (NMT, heartbeat, SDO, PDO, SYNC) are specified in CiA 301 V4.2.0 | The specifications of phase b and c cite \[CiA301\] by section; the document is needed in the work directory before phase b starts. |
+| ID | Decision | Reason |
+| --- | --- | --- |
+| D1 | OpenCAN is a slave node: NMT slave, consumer of the master heartbeat, SYNC consumer and time consumer. The Redundancy Master, NMT master, SYNC producer and time producer roles are not part of the core | The master is usually the platform computer and needs a scheduler for SYNC, time and NMT commands. A master role fits on the same blocks (heartbeat producer on the active bus, bus switch, clause 8.3.3a, b, f) |
+| D2 | The generic `MinimalSet_g` selects the minimal protocol set of clause 9 instead of the clause 6 slave | The minimal set is a subset of the clause 6 slave (no module control services, no boot-up, no emergency and time stamp objects, fixed PDO parameters, clauses 9.4.6, 9.4.7, 9.4.9.2); one generic covers the simplest units at little cost |
+| D3 | The SDO server supports the expedited and the segmented transfer, not the block transfer. A core with `MinimalSet_g` has no SDO server | Clause 8.3.1c requires the redundancy parameters to be programmable through SDO; they fit an expedited transfer, the SCET objects of clause 7.1.2 have 7 bytes and need the segmented one. Clause 9.4.10f makes SDOs optional in the minimal set |
+| D4 | The generic `BusAccess_g` selects the selective (default) or the parallel bus access architecture of clause 8.2. With parallel bus access the controller of the inactive bus is in listen-only mode; section 6.5 defines its frames | The toggling protocol of clause 8.3.3 is made for the selective architecture with one controller. In listen-only mode the node never drives the inactive bus (no acknowledge, no error flags, no frames), so a fault of the node disturbs only the bus that it considers active, and a bus switch escapes it |
+| D5 | SCET with both time distribution protocols of clause 7.2 for a time consumer: a local SCET counter (32 bits of seconds, sub-second width 0 to 24 bits by generic), set by the Spacecraft Time PDO and returned in the Local Time PDO, both sampled at the SYNC for the high-resolution protocol. The spacecraft UTC is not implemented | The time consumer is the role of a slave (D1); the high-resolution protocol needs the sample at the SYNC frame in hardware. UTC is optional (clause 7.1.1b) |
+| D6 | The core has native ports: PDO data, the object access port for application objects, the protected NODE-ID, the local SCET and status. An AXI4-Lite register interface for configuration and status is a separate wrapper | A unit without a processor uses the native ports directly; the AXI4-Lite wrapper is the interface of the family for a processor system |
+| D7 | Up to four receive and four transmit PDOs by generic, with the COB-IDs of the pre-defined connection set as defaults (clause 9.3). The mapping is static: the eight data bytes of a PDO pass to and from the user logic, and the mapping objects (1600h, 1A00h) are read-only and describe this mapping | Clause 9.4.5 forbids variable and dynamic mapping in the minimal set; clause 9.4.10e allows a read-only object dictionary. One mapping for both levels keeps the PDO path simple |
+| D8 | The NODE-ID comes from pins with a protection code (the identifier and its complement), sampled at reset; the node does not communicate while the code is invalid. COB-IDs default to the pre-defined connection set, change only through SDO in Pre-operational and are held twice with a compare that detects a single upset | No single point failure makes the node use a false NODE-ID or COB-ID (clauses 6.10d, 6.10f, 6.10k) |
+| D9 | The emergency object of clause 6.4 is not implemented; the optional emergency message before a bus switch (clause 8.3.3, note 2) is not sent | The object is optional, clause 11 does not require the EMCY service, and an implementation would have to support all CANopen error codes (clause 6.4b). The conformance section of the user guide lists the clause as not implemented with this reason |
+| D10 | The CANopen protocols (NMT, heartbeat, SDO, PDO, SYNC) are specified from \[CiA301\]; the module specifications cite its sections by number | \[ECSS\] specifies the CANopen layer by reference to \[CiA301\] V4.2.0 and states its applicability in clause 11 |
 
 ### 6.2 Clock and reset
 
@@ -201,10 +181,14 @@ Node and Reset Communication reset the protocol state as defined by \[CiA301\], 
 
 ### 6.3 Internal interfaces
 
-- Link to dispatch: one frame stream per direction and per bus (identifier, IDE, RTR, DLC, eight data bytes), the
-  active bus, the error state and counters of each controller.
-- Dispatch to the protocol blocks: frames filtered by COB-ID (NMT, SYNC, master heartbeat, RPDOs, SDO requests,
-  Spacecraft Time PDO) and transmit requests with a fixed priority (heartbeat and boot-up, SDO replies, TPDOs).
+- Link to dispatch: one receive frame stream per bus and one transmit frame stream to the active bus (identifier,
+  IDE, RTR, DLC, eight data bytes), the error state and counters of each controller.
+- Dispatch to the protocol blocks: frames of the active bus filtered by COB-ID (NMT, SYNC, master heartbeat, RPDOs,
+  SDO requests, Spacecraft Time PDO) and transmit requests with a fixed priority (heartbeat and boot-up, SDO replies,
+  TPDOs).
+- Dispatch to redundancy: the reception of a master heartbeat and of an NMT message, per bus (section 6.5).
+- Redundancy to link and dispatch: the active bus and the enable and mode of each controller; redundancy to NMT: the
+  request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e); NMT to redundancy: the NMT state.
 - A millisecond tick (`olo_base_strobe_gen`) for the heartbeat producer, the heartbeat consumer and the toggling
   timer.
 
@@ -215,11 +199,47 @@ disabled before the switch and enabled after it (`Cfg_Enable` of `olo_intf_can`)
 after eleven recessive bits and never sees a bus change inside a frame. The error counters are kept, as the
 controller keeps them while disabled; clause 5.6.2 only requires them to be readable.
 
+### 6.5 Parallel bus access
+
+With parallel bus access (D4) `ocan_link` has one `olo_intf_can` per bus. The protocol of clause 8.3 is the same as
+with selective bus access: the node has one active bus at a time, sends every frame (boot-up, heartbeat, PDOs, SDO
+replies) on it only (clause 8.3.3d) and changes it by the rules of clauses 8.3.3e to l.
+
+- **Controller of the active bus:** normal mode. It receives, acknowledges, signals errors and sends.
+- **Controller of the inactive bus:** listen-only mode (`Cfg_ListenOnly` of `olo_intf_can`). It receives every
+  frame of the inactive bus but never drives that bus, and the transmit enable of its transceiver stays inactive.
+  Errors on the inactive bus are reported as events; its error counters do not change in this mode.
+- **Bus switch:** the controllers exchange their roles. Both are disabled, their modes are exchanged and both are
+  enabled again, so that each integrates on its bus (eleven recessive bits) before it receives; the mode of a
+  controller is static while it is enabled. A switch happens in Pre-operational only (clauses 8.3.3e, h), when the
+  node sends no PDOs.
+
+**NMT message.** Clause 8.3.3 distinguishes the Master Heartbeat messages (8.3.3a, c) from the NMT message that
+identifies the active bus (8.3.3g, h, j). An NMT message is a frame of the NMT module control service (COB-ID 000h)
+addressed to the node or to all nodes.
+
+**Frames of the inactive bus.** `ocan_dispatch` passes the frames of the active bus to the protocol blocks and
+discards the frames of the inactive bus, with one exception. During the bus selection process, that is in
+Pre-operational after a missing master heartbeat (clauses 8.3.3e to j), an NMT message on the inactive bus makes that
+bus the active one (clause 8.3.3g). The node switches to it at once instead of at its next toggle, ends the bus
+selection (clause 8.3.3k), updates Bdefault (clause 8.3.3l) and processes the NMT message as the first frame of the
+new active bus. Outside the bus selection process no frame of the inactive bus changes the active bus: the master
+heartbeat is present on the active bus, and a faulty node on the inactive bus cannot move the node away from a
+Redundancy Master that operates on the active bus (clauses 8.1a, 8.3.3a, b).
+
+**No double delivery.** The protocol blocks receive the frames of one bus at a time, so no frame reaches them twice,
+also when the same frame is present on both buses. The NMT message that ends a bus selection on the inactive bus is
+delivered once, as a frame of the new active bus; from then on the frames of the former active bus are discarded.
+When NMT messages complete on both buses in the same clock cycle, the bus that the node currently uses wins.
+
+**Monitoring.** The error state, the error counters and the error events of both controllers are status outputs
+(clause 5.6.2): the application sees the condition of the redundant bus without a bus switch.
+
 ## 7 Building block specifications
 
 The module specifications (`hdl/<module>/docs/specification.md`) hold the requirements with their clause references.
-They are written in dependency order once section 6.1 is decided: `ocan_link`, `ocan_dispatch`, `ocan_nmt`,
-`ocan_redundancy` (phase b), then `ocan_od`, `ocan_sdo`, `ocan_pdo`, `ocan_time` (phase c) and `ocan_core`.
+They are written in dependency order: `ocan_link`, `ocan_dispatch`, `ocan_nmt`, `ocan_redundancy` (phase b), then
+`ocan_od`, `ocan_sdo`, `ocan_pdo`, `ocan_time` (phase c) and `ocan_core`.
 
 ## 8 Open Logic usage
 
@@ -272,7 +292,7 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | 6.1 | Service data objects | `ocan_sdo` | `ocan_od` | Unit |
 | 6.2 | Process data objects | `ocan_pdo` | `ocan_dispatch` | Unit |
 | 6.3 | Synchronisation object | `ocan_pdo` | `ocan_time` | Unit |
-| 6.4 | Emergency object | Not implemented (Q9) | - | - |
+| 6.4 | Emergency object | Not implemented (D9, optional object) | - | - |
 | 6.5.1 | Module control services | `ocan_nmt` | - | Unit |
 | 6.5.2 | Error control services, heartbeat | `ocan_nmt` | `ocan_redundancy` | Unit |
 | 6.5.3 | Bootup service | `ocan_nmt` | - | Unit |
@@ -284,11 +304,11 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | `ocan_od`, `ocan_dispatch` | Unit |
 | 7.1.1 | Time code formats | `ocan_time` | - | Unit |
 | 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | `ocan_od` | Unit |
-| 7.1.3 | Spacecraft UTC objects | Not implemented (Q5) | - | - |
+| 7.1.3 | Spacecraft UTC objects | Not implemented (D5, optional time code) | - | - |
 | 7.2.1 | Time distribution, general | `ocan_time` | - | Unit |
 | 7.2.2 | Time distribution protocol | `ocan_time` | `ocan_pdo` | Unit |
 | 7.2.3 | High-resolution time distribution protocol | `ocan_time` | `ocan_pdo` | Core |
-| 8.1 | Redundancy master | Out of scope, master (Q1) | `ocan_redundancy` | Core |
+| 8.1 | Redundancy master | Out of scope, master (D1) | `ocan_redundancy` | Core |
 | 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | - | Unit |
 | 8.3.1 | Bus redundancy management parameters | `ocan_od` | `ocan_redundancy` | Unit |
 | 8.3.2 | Start-up procedure | `ocan_redundancy` | `ocan_nmt` | Unit |
@@ -309,7 +329,7 @@ requirements and test cases of every clause; a clause whose owner module has no 
 
 | Phase | Content | Exit criterion |
 | --- | --- | --- |
-| a | This architecture; answers to section 6.1; compliance matrix | Review passed |
+| a | This architecture with its decisions; compliance matrix | Review passed |
 | b | `ocan_link`, `ocan_dispatch`, `ocan_nmt`, `ocan_redundancy`: a slave node that joins the network, follows the Redundancy Master and switches the bus | Phase b modules verified, GHDL and QuestaSim |
 | c | `ocan_od`, `ocan_sdo`, `ocan_pdo`, `ocan_time`, `ocan_core`: process data, configuration access and time | All modules verified, coverage closed, TRL 3 |
-| d | Hardware test on a redundant CAN network with transceivers | TRL 4 |
+| d | AXI4-Lite register wrapper for configuration and status (D6); hardware test on a redundant CAN network with transceivers | TRL 4 |

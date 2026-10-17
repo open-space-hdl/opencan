@@ -17,7 +17,7 @@ The core is in development and has no technology readiness level yet. The
 
 | Phase | Content | State |
 | --- | --- | --- |
-| a | Architecture: scope, interpretation of ECSS-E-ST-50-15C, traceability matrix | In work |
+| a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Open |
 | c | CANopen services and time distribution | Open |
-| d | Hardware test on a redundant CAN network | Open |
+| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | Open |
