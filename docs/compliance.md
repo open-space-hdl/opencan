@@ -23,7 +23,7 @@ verify these requirements. A clause whose owner module has no testbench yet is p
 | 6.1 | Service data objects | `ocan_sdo` | - | - | Planned |
 | 6.2 | Process data objects | `ocan_pdo` | - | - | Planned |
 | 6.3 | Synchronisation object | `ocan_pdo` | - | - | Planned |
-| 6.4 | Emergency object | Not implemented (Q9) | - | - | Not implemented |
+| 6.4 | Emergency object | Not implemented (D9, optional object) | - | - | Not implemented |
 | 6.5.1 | Module control services | `ocan_nmt` | - | - | Planned |
 | 6.5.2 | Error control services, heartbeat | `ocan_nmt` | - | - | Planned |
 | 6.5.3 | Bootup service | `ocan_nmt` | - | - | Planned |
@@ -35,11 +35,11 @@ verify these requirements. A clause whose owner module has no testbench yet is p
 | 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | - | - | Planned |
 | 7.1.1 | Time code formats | `ocan_time` | - | - | Planned |
 | 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | - | - | Planned |
-| 7.1.3 | Spacecraft UTC objects | Not implemented (Q5) | - | - | Not implemented |
+| 7.1.3 | Spacecraft UTC objects | Not implemented (D5, optional time code) | - | - | Not implemented |
 | 7.2.1 | Time distribution, general | `ocan_time` | - | - | Planned |
 | 7.2.2 | Time distribution protocol | `ocan_time` | - | - | Planned |
 | 7.2.3 | High-resolution time distribution protocol | `ocan_time` | - | - | Planned |
-| 8.1 | Redundancy master | Out of scope, master (Q1) | - | - | Out of scope |
+| 8.1 | Redundancy master | Out of scope, master (D1) | - | - | Out of scope |
 | 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | - | - | Planned |
 | 8.3.1 | Bus redundancy management parameters | `ocan_od` | - | - | Planned |
 | 8.3.2 | Start-up procedure | `ocan_redundancy` | - | - | Planned |
