@@ -64,7 +64,7 @@ Held NMT message (DS-BG-03, DS-BG-04):
 
 | Condition | Action |
 | --- | --- |
-| `Red_Selecting` = '1' and an NMT message on the inactive bus, none on the active bus in the same cycle | `Hold` := '1' with the command specifier and the bus. From the next cycle on, no frame of either bus reaches the protocol outputs (the per-bus events to `ocan_redundancy` continue) |
+| `Red_Selecting` = '1' and an NMT message on the inactive bus, none on the active bus in the same cycle | `Hold` := '1' with the command specifier and the bus. From this cycle on, no frame of either bus reaches the protocol outputs (the per-bus events to `ocan_redundancy` continue) |
 | `Hold` = '1' and `Red_ActiveBus` = the held bus | `RxNmt_Valid` with the held command specifier, `Hold` := '0' |
 | `Hold` = '1', `Red_Selecting` = '0' and `Red_ActiveBus` /= the held bus | `Hold` := '0' without an event |
 | NMT messages on both buses in the same cycle | The message of the active bus is passed; the other is not held |
