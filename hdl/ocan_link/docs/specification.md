@@ -120,7 +120,7 @@ rule for synchronisers).
 
 ## 5. Partner behaviour: olo_intf_can
 
-From the source and the documentation of `olo_intf_can` in \[OLO\] 4.7.0-ft.7:
+From the source and the documentation of `olo_intf_can` in \[OLO\] 4.7.0-ft.8:
 
 - **Transmit.** A frame is taken with `Tx_Valid` while `Tx_Ready` is '1' and stays pending until `Tx_Done` or
   `Tx_Aborted`. The controller retransmits it after an error or a lost arbitration (`Tx_ArbLost`); it has no transmit
