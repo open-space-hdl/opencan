@@ -137,6 +137,26 @@ package ocan_tb_net_pkg is
 
     end protected;
 
+    -- Log of frames of a device under test: channel (bus) index, frame and time of the event
+    type TbFrameEntry_t is record
+        Frame : CanFrame_t;
+        T     : time;
+    end record;
+
+    type TbFrameLog_t is protected
+
+        procedure push (
+            ch    : natural;
+            frame : CanFrame_t);
+        impure function count (ch : natural) return natural;
+        impure function get (
+            ch : natural;
+            n  : natural) return TbFrameEntry_t;
+
+        procedure clear (ch : natural);
+
+    end protected;
+
     function tbErrImage (err : TbErrKind_t) return string;
 
 end package;
@@ -348,6 +368,57 @@ package body ocan_tb_net_pkg is
         begin
             return Count_v(idx, cnt);
         end function;
+
+    end protected body;
+
+    type TbFrameLog_t is protected body
+
+        constant Channels_c : positive := 4;
+        constant Size_c     : positive := 4096;
+
+        type EntryArray_t is array (0 to Size_c - 1) of TbFrameEntry_t;
+        type EntryArrayPtr_t is access EntryArray_t;
+        type EntryArrays_t is array (0 to Channels_c - 1) of EntryArrayPtr_t;
+        type NatArray_t is array (0 to Channels_c - 1) of natural;
+
+        variable Log_v   : EntryArrays_t := (others => null);
+        variable Count_v : NatArray_t    := (others => 0);
+
+        procedure push (
+            ch    : natural;
+            frame : CanFrame_t) is
+        begin
+            if Log_v(ch) = null then
+                Log_v(ch) := new EntryArray_t;
+            end if;
+            assert Count_v(ch) < Size_c
+                report "ocan_tb_net_pkg: frame log of channel " & integer'image(ch) & " full"
+                severity failure;
+            Log_v(ch)(Count_v(ch)) := (Frame => canNormalize(frame),
+                                       T => now);
+            Count_v(ch)            := Count_v(ch) + 1;
+        end procedure;
+
+        impure function count (ch : natural) return natural is
+        begin
+            return Count_v(ch);
+        end function;
+
+        impure function get (
+            ch : natural;
+            n  : natural) return TbFrameEntry_t is
+        begin
+            assert n < Count_v(ch)
+                report "ocan_tb_net_pkg: frame " & integer'image(n) & " of channel " & integer'image(ch) &
+                       " does not exist"
+                severity failure;
+            return Log_v(ch)(n);
+        end function;
+
+        procedure clear (ch : natural) is
+        begin
+            Count_v(ch) := 0;
+        end procedure;
 
     end protected body;
 

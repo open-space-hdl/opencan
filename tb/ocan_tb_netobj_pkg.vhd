@@ -6,7 +6,8 @@
 ---------------------------------------------------------------------------------------------------
 -- Description
 ---------------------------------------------------------------------------------------------------
--- The control object of the CAN network model, shared by the model nodes and the test processes.
+-- The control object of the CAN network model, shared by the model nodes and the test processes, and the
+-- log of the frames that the device under test passes.
 --
 -- Documentation: docs/conventions.md (section Verification)
 
@@ -21,6 +22,7 @@ library work;
 ---------------------------------------------------------------------------------------------------
 package ocan_tb_netobj_pkg is
 
-    shared variable Net_v : TbNet_t;
+    shared variable Net_v    : TbNet_t;
+    shared variable DutLog_v : TbFrameLog_t;
 
 end package;
