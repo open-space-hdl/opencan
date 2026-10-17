@@ -706,11 +706,31 @@ begin
                 send(canStd(16#123#, 8, x"0123456789ABCDEF"));
                 wait until Can_Tx(0) = '0';
                 Ctrl_Bus <= '1';
-                wait until rising_edge(Clk) and Stat_Switching = '0' and Stat_ActiveBus = '1';
+                -- A frame offered during the switch is taken only after it and sent on the new bus (LK-BS-03)
+                F_v      := canStd(16#125#, 2, x"1250000000000000");
+                wait until rising_edge(Clk);
+                Tx_Id    <= F_v.Id;
+                Tx_Ide   <= F_v.Ide;
+                Tx_Rtr   <= F_v.Rtr;
+                Tx_Dlc   <= std_logic_vector(to_unsigned(F_v.Dlc, 4));
+                Tx_Data  <= F_v.Data;
+                Tx_Valid <= '1';
+                loop
+                    wait until rising_edge(Clk);
+                    if Stat_Switching = '1' then
+                        check_value(Tx_Ready, '0', ERROR, "no frame taken during the switch");
+                    end if;
+                    exit when Tx_Ready = '1';
+                end loop;
+                Tx_Valid <= '0';
+                check_value(Stat_ActiveBus = '1' and Stat_Switching = '0', ERROR, "frame taken after the switch");
                 check_value(CntDone, N1_v + 1, ERROR, "frame on the bus sent on the old bus");
+                waitTx(Sent_v);
+                check_value(Sent_v, ERROR, "frame offered during the switch sent");
                 wait for 20 * Bit_v;
                 check_value(seenId(1, canStd(16#123#, 0).Id), true, ERROR, "frame on bus A");
                 check_value(seenId(2, canStd(16#123#, 0).Id), false, ERROR, "frame not on bus B");
+                check_value(seenId(2, F_v.Id), true, ERROR, "frame offered during the switch on bus B");
                 -- The same with an error frame of node 1: the frame is dropped
                 switchTo('0');
                 N0_v     := CntAborted;
@@ -762,6 +782,7 @@ begin
                 for I in 0 to 199 loop
                     wait for Bit_v;
                     check_value(Can_Tx, "11", ERROR, "transmit bits recessive while disabled");
+                    check_value(Tx_Ready, '0', ERROR, "no frame taken while disabled");
                     check_value(Can_TxEn, "00", ERROR, "transmit enables inactive while disabled");
                 end loop;
 
