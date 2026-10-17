@@ -715,6 +715,7 @@ begin
                 Tx_Dlc   <= std_logic_vector(to_unsigned(F_v.Dlc, 4));
                 Tx_Data  <= F_v.Data;
                 Tx_Valid <= '1';
+
                 loop
                     wait until rising_edge(Clk);
                     if Stat_Switching = '1' then
@@ -722,6 +723,7 @@ begin
                     end if;
                     exit when Tx_Ready = '1';
                 end loop;
+
                 Tx_Valid <= '0';
                 check_value(Stat_ActiveBus = '1' and Stat_Switching = '0', ERROR, "frame taken after the switch");
                 check_value(CntDone, N1_v + 1, ERROR, "frame on the bus sent on the old bus");
