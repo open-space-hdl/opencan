@@ -15,6 +15,7 @@ also reports the error state and the error counters of every controller.
 | LK-3 | `ocan_link` | Bus switch sequencer: abort of a pending frame, disable, selection or mode change, enable |
 | LK-4 | `ocan_link` | Receive path: frames of each bus as events with a fixed latency |
 | LK-5 | `ocan_link` | Transmit path: one frame at a time to the controller of the active bus |
+| LK-6 | `ocan_link` | Dominant monitor: releases a transmit output that stays dominant too long, per controller |
 
 `ocan_link` runs in one clock domain; the bus inputs pass the synchronisers of `olo_intf_can` (`SyncTmr_g` = true).
 
@@ -28,8 +29,9 @@ also reports the error state and the error counters of every controller.
 | LK-IF-02 | The link shall take frames to send (identifier, IDE, RTR, DLC, eight data bytes) with a valid/ready handshake, take an abort request, and report the completion of each frame (sent or aborted) and every lost arbitration as events. | 5.6.1a |
 | LK-IF-03 | The link shall pass every frame received on a bus (identifier, IDE, RTR, DLC, eight data bytes) as a one-cycle event of that bus, without back pressure. | 5.6.1a, 8.2.2a |
 | LK-IF-04 | The link shall take the bit timing configuration (prescaler, PROP_SEG + PHASE_SEG1, PHASE_SEG2, SJW) as inputs common to all controllers. The configuration is applied while the link is disabled and is static while it is enabled. | 5.4.3a, 5.4.3d |
-| LK-IF-05 | The link shall take an enable input, the requested active bus and a bus-off recovery request. | 6.10f, 8.2.3a |
-| LK-IF-06 | The link shall provide the active bus and a busy indication while a bus switch is in progress. Per controller it shall provide the transmit and receive error counts, the fault confinement state (error active, error passive, bus off), the bus idle state and the error events (bit, stuff, CRC, form, acknowledgement). | 5.6.2a, 5.6.2b, 5.6.2c |
+| LK-IF-05 | The link shall take an enable input, the requested active bus, a bus-off recovery request and, per controller, a re-enable request after a dominant timeout. | 6.10f, 8.2.3a, 5.3.6b |
+| LK-IF-06 | The link shall provide the active bus and a busy indication while a bus switch is in progress. Per controller it shall provide the transmit and receive error counts, the fault confinement state (error active, error passive, bus off), the bus idle state, the error events (bit, stuff, CRC, form, acknowledgement), and the dominant timeout as an event and as a state. | 5.6.2a, 5.6.2b, 5.6.2c, 5.3.6b |
+| LK-IF-07 | The link shall have a fault injection input per controller that forces the transmit output of the controller dominant ahead of the dominant monitor. | 5.3.6b |
 
 ### 2.2 Bus access (LK-1, LK-2)
 
@@ -84,6 +86,15 @@ also reports the error state and the error counters of every controller.
 | LK-FC-02 | The link shall pass, per controller, the bit, stuff, CRC, form and acknowledgement error events. | 5.6.2a |
 | LK-FC-03 | With `AutoRecover_g` = true a bus-off controller shall recover after 128 occurrences of 11 consecutive recessive bits; with `AutoRecover_g` = false this recovery shall start only after a recovery request. | 5.6.2a |
 
+### 2.8 Dominant monitor (LK-6)
+
+| ID | Requirement | ECSS |
+| --- | --- | --- |
+| LK-DT-01 | When the transmit output of a controller has been dominant for more than `DominantLimit_g` bit times of the configured bit timing, the link shall set that transmit output recessive and its transmit enable inactive, disable the controller, abort its pending frame and raise the dominant timeout event. | 5.3.6b |
+| LK-DT-02 | A controller stopped by a dominant timeout shall stay disabled, with its transmit output recessive, until its re-enable request or until the link is disabled and enabled again. The dominant timeout state is set while it is stopped. | 5.3.6b |
+| LK-DT-03 | While the controller of the active bus is stopped, the link shall take no frame to send. A bus switch shall remain possible; with parallel bus access the stopped controller does not take part in it until it is re-enabled. | 5.3.6b, 8.2.3a |
+| LK-DT-04 | No dominant sequence that `olo_intf_can` drives in operation, including its reaction to bit errors during its own error flags, shall reach the limit at the default `DominantLimit_g`. | 5.3.6b |
+
 ## 3. Error conditions
 
 | Condition | Detection | Response |
@@ -93,6 +104,7 @@ also reports the error state and the error counters of every controller.
 | Bus stuck dominant or broken | LK-1 (no bus idle, errors) | A pending frame that never started is dropped at once on an abort; a bus switch completes |
 | Request for the other bus during a bus switch | LK-3 | Taken after the running switch |
 | Enable removed during a bus switch | LK-3 | Controllers disabled; the switch ends; on the next enable the active bus is the requested bus |
+| Transmit output dominant for more than `DominantLimit_g` bit times (stuck controller, upset) | LK-6 | Transmit output recessive, transmit enable inactive, controller disabled, pending frame aborted, event and state until the re-enable request |
 
 ## 4. Configuration parameters
 
@@ -101,6 +113,7 @@ also reports the error state and the error counters of every controller.
 | `BusAccess_g` | "Selective" | "Selective", "Parallel" | Bus access architecture of clause 8.2 (D4) |
 | `SyncStages_g` | 2 | 2 to 4 | Synchroniser stages of the bus inputs (`olo_intf_can`) |
 | `AutoRecover_g` | true | true, false | Automatic bus-off recovery, or recovery on request (`olo_intf_can`) |
+| `DominantLimit_g` | 32 | 13 to 1023 | Limit of the dominant monitor in bit times (LK-DT-01); the default and the lower bound follow from section 5 |
 
 The bit timing has no generic: it is set at runtime (LK-IF-04). `SyncTmr_g` of `olo_intf_can` is always true (family
 rule for synchronisers).
@@ -126,6 +139,18 @@ From the source and the documentation of `olo_intf_can` in \[OLO\] 4.7.0-ft.7:
 - **Bit timing.** `Cfg_Tseg1` is PROP_SEG + PHASE_SEG1; SJW is limited to min(4, `Cfg_Tseg1`, `Cfg_Tseg2`).
   Hard synchronisation at a recessive-to-dominant edge in bus idle, resynchronisation on recessive-to-dominant edges
   within a frame only.
+- **Longest dominant sequences on `Can_Tx`.** Without a fault the controller drives at most 6 consecutive dominant
+  bits:
+  - the bit stuffing limits a frame to 5;
+  - an active error or overload flag has 6;
+  - the bit before a flag is one that the controller drives recessive.
+
+  On the bus, superposed error flags reach 12 dominant bits (Bosch 2.0, section 3.2.3). When the dominant bits of the
+  controller do not reach its receive input, every flag bit is a bit error. The controller then restarts its active
+  error flag (rules 4 and 5) and adds 8 to an error count each time, until the count reaches 128 and the flag becomes
+  passive. That gives at most 16 active flags of one bit each after up to 5 dominant frame bits: 21 bits. The default
+  limit of 32 bit times lies 11 bit times (about 50 %) above this sequence. The lower bound of 13 lies above the 12
+  bits of superposed error flags.
 
 ## 6. Interpretation of the standard
 
@@ -134,7 +159,7 @@ From the source and the documentation of `olo_intf_can` in \[OLO\] 4.7.0-ft.7:
 | 5.4.1a, 5.4.2a | The supported bit rates are those of the transceivers and of the device. The link reaches all four rates of the standard (LK-PR-02); which of them a device supports is set by its bit timing configuration |
 | 5.4.3b, 5.4.3c | The calculation method and the choice of the bit timing are a system task: the integrator computes the values for the network, and the link accepts any valid setting. `canBitTiming` of Open Logic is an aid with its own criterion (smallest rate error); the user guide gives the formulas |
 | 5.4.3d | `olo_intf_can` limits SJW also to PHASE_SEG2. Bosch 2.0 makes PHASE_SEG2 at least PHASE_SEG1, so every value that the clause allows is accepted |
-| 5.3.6a, 5.3.6b | The inversion of the transmit bit for the RS-485 driver and its fail-safe mechanism belong to the board. The link keeps the transmit output of a disabled or inactive bus recessive and its transmit enable inactive |
+| 5.3.6a, 5.3.6b | The inversion of the transmit bit for the RS-485 driver and its fail-safe mechanism belong to the board. The link keeps the transmit output of a disabled or inactive bus recessive and its transmit enable inactive. Its dominant monitor (LK-DT-01) is a second protection on the FPGA side against a controller that holds the bus dominant; it does not replace the mechanism of the board, which also covers the transceiver |
 | 5.6.2b | The error active and error passive states are indicated together with bus off (LK-FC-01) |
 | 8.2.2a | Read with the expanded information of Annex A.4.2: a node with parallel bus access accesses each bus through its own controller |
 | 8.2.3a | The selection mechanism of the link is the requested active bus input. `ocan_redundancy` drives it; how the application selects the bus is specified there |

@@ -173,7 +173,7 @@ the active bus](img/ocan_core_overview.drawio.svg)
 | D8 | The NODE-ID comes from pins with a protection code (the identifier and its complement), sampled at reset; the node does not communicate while the code is invalid. COB-IDs default to the pre-defined connection set, change only through SDO in Pre-operational and are held twice with a compare that detects a single upset | No single point failure makes the node use a false NODE-ID or COB-ID (clauses 6.10d, 6.10f, 6.10k) |
 | D9 | The emergency object of clause 6.4 is not implemented; the optional emergency message before a bus switch (clause 8.3.3, note 2) is not sent | The object is optional, clause 11 does not require the EMCY service, and an implementation would have to support all CANopen error codes (clause 6.4b). The conformance section of the user guide lists the clause as not implemented with this reason |
 | D10 | The CANopen protocols (NMT, heartbeat, SDO, PDO, SYNC) are specified from \[CiA301\]; the module specifications cite its sections by number | \[ECSS\] specifies the CANopen layer by reference to \[CiA301\] V4.2.0 and states its applicability in clause 11 |
-| D11 | Received frames are not buffered. `ocan_dispatch` classifies every frame in the cycle after its reception and passes it as an event with a fixed latency; the block that uses an object holds its last frame in a register | A CAN receiver cannot hold back the bus, so every consumer has to take each frame anyway. A buffer would delay the SYNC by a variable time, which the high-resolution time protocol cannot accept (clause 7.2.3k), and would be a memory that needs ECC. CANopen process data have last-value semantics |
+| D11 | Received frames are not buffered. `ocan_dispatch` classifies every frame in the cycle after its reception and passes it as an event with a fixed latency; the block that uses an object holds its last frame in a register. Every block that takes frame events takes an event in any clock cycle and ends the processing of a frame within the minimum frame time at 1 Mbit/s (46 bit times, 46 µs), before the next frame can arrive; its specification states this as a requirement and its verification plan tests it with back-to-back frames | A CAN receiver cannot hold back the bus, so every consumer has to take each frame anyway. A buffer would delay the SYNC by a variable time, which the high-resolution time protocol cannot accept (clause 7.2.3k), and would be a memory that needs ECC. CANopen process data have last-value semantics |
 
 ### 6.2 Clock and reset
 
@@ -186,8 +186,9 @@ Node and Reset Communication reset the protocol state as defined by \[CiA301\], 
 - Link to dispatch: the frames received on each bus as events (identifier, IDE, RTR, DLC, eight data bytes, D11)
   and one transmit frame stream to the active bus, with its completion events.
 - Dispatch to the protocol blocks: frames of the active bus filtered by COB-ID (NMT, SYNC, master heartbeat, RPDOs,
-  SDO requests, Spacecraft Time PDO) and transmit requests with a fixed priority in the order of the default
-  identifiers (TPDOs, Local Time PDO, SDO replies, heartbeat and boot-up).
+  SDO requests, Spacecraft Time PDO) and transmit requests in round-robin order along the default
+  identifiers (TPDOs, Local Time PDO, SDO replies, heartbeat and boot-up), so that a pending frame waits for at
+  most one frame of each other source.
 - Dispatch to redundancy: the reception of a master heartbeat and of an NMT message, per bus (section 6.5).
 - Redundancy to link and dispatch: the active bus and the enable and mode of each controller; redundancy to NMT: the
   request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e); NMT to redundancy: the NMT state.
@@ -250,7 +251,7 @@ They are written in dependency order: `ocan_link`, `ocan_dispatch`, `ocan_nmt`, 
 | CAN 2.0B protocol, bit timing, error confinement | `olo_intf_can` |
 | Bit timing constants from a clock frequency and a bit rate | `canBitTiming` of `olo_intf_pkg_can` |
 | Millisecond tick | `olo_base_strobe_gen` |
-| Transmit arbitration | `olo_base_arb_prio` |
+| Transmit arbitration | `olo_base_arb_rr` |
 
 `olo_intf_can` has no acceptance filter by design; the filter by COB-ID is `ocan_dispatch`. No gap in Open Logic is
 known at this stage; one found later goes to the fork first.

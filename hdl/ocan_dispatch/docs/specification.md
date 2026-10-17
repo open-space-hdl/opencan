@@ -12,7 +12,7 @@ them to the link.
 | --- | --- | --- |
 | DS-1 | `ocan_dispatch` | Receive filter: classification by identifier, NMT addressing, service gating |
 | DS-2 | `ocan_dispatch` | Bus gate: frames of the active bus to the protocol blocks, NMT messages and master heartbeats of each bus to `ocan_redundancy` |
-| DS-3 | `ocan_dispatch` (`olo_base_arb_prio`) | Transmit arbitration, frame build, completion events |
+| DS-3 | `ocan_dispatch` (`olo_base_arb_rr`) | Transmit arbitration, frame build, completion events |
 | DS-4 | `ocan_dispatch` | COB-ID protection: two copies of every configured COB-ID |
 
 `ocan_dispatch` runs in one clock domain and has no frame memory.
@@ -39,10 +39,12 @@ them to the link.
 | DS-RX-02 | Frames with an extended identifier, remote frames and frames that match no object shall be discarded without an event. | 5.6.1a, 11.1 |
 | DS-RX-03 | An NMT frame shall be an NMT message only when its DLC is 2 and its second data byte is the NODE-ID or 0. An NMT frame with another DLC shall be discarded and reported as a protocol error; one addressed to another node shall be discarded without an event. | 9.1b, 9.4.8a |
 | DS-RX-04 | SYNC shall be passed to `ocan_pdo` and `ocan_time` in the same clock cycle. | 6.3b, 7.2.3k |
-| DS-RX-05 | Every event to a protocol block shall follow the event of the link by the same constant number of clock cycles, for every object and both buses. | 7.2.3k |
+| DS-RX-05 | Every event to a protocol block shall follow the event of the link by the same constant number of clock cycles, for every object and both buses. The NMT message held by DS-BG-03 is the only exception. | 7.2.3k |
 | DS-RX-06 | SDO requests shall be passed only while the SDO enable is set, receive PDOs and the Spacecraft Time PDO only while the PDO enable is set, and SYNC only while the SYNC enable is set. NMT messages and master heartbeats shall always be passed. Frames that are not passed shall be discarded without an event. | 8.3.3e |
 | DS-RX-07 | While the NODE-ID is not valid, no frame shall be passed and none sent. | 6.10f |
 | DS-RX-08 | Without an SDO server (`SdoServer_g` = false) SDO requests shall be discarded without an event. | 9.3a |
+| DS-RX-09 | The dispatch shall take a frame event of each bus in every clock cycle, also events of both buses in the same cycle, and classify each without back pressure. | 8.2.2a |
+| DS-RX-10 | Two events to the same protocol block shall be at least the minimum frame time apart: 46 bit times. A data frame without data bytes has 44 bits, and the next frame can start in the third bit of the intermission. The per-bus events to `ocan_redundancy` are the exception: one event of each bus can come in the same cycle. | none |
 
 ### 2.3 Bus gate (DS-2)
 
@@ -57,7 +59,8 @@ them to the link.
 
 | ID | Requirement | ECSS |
 | --- | --- | --- |
-| DS-TX-01 | Pending transmit requests shall be served one frame at a time, in a fixed priority that follows the default identifiers of the pre-defined connection set: transmit PDOs 1 to 4, the Local Time PDO, the SDO reply, NMT error control. The next frame is passed to the link after the completion of the previous one. | none |
+| DS-TX-01 | Pending transmit requests shall be served one frame at a time. The sources are ordered by the default identifiers of the pre-defined connection set: transmit PDOs 1 to 4, the Local Time PDO, the SDO reply, NMT error control. After a frame of a source, the next frame shall be that of the first pending source after it in this order, wrapping around to the first source. The next frame is passed to the link after the completion of the previous one. | none |
+| DS-TX-06 | A pending request shall be passed to the link after at most one frame of each other source, also when transmit PDOs are pending all the time. | 6.5.2, 8.3.3d |
 | DS-TX-02 | The frames shall be data frames with an 11-bit identifier: 700h + NODE-ID for NMT error control, 580h + NODE-ID for the SDO reply, the COB-ID of transmit PDO n and of the Local Time PDO; the DLC and the data are those of the request. | 6.10a, 9.1b |
 | DS-TX-03 | The completion of a frame (sent, aborted) shall be reported to the requester of that frame. | 6.2a |
 | DS-TX-04 | A request of a service whose enable is not set, or of an object without a valid COB-ID, shall complete as aborted without a frame. When the enable of the service of the pending frame is cleared, the dispatch shall request the abort of that frame from the link. | 8.3.3e |
@@ -101,4 +104,4 @@ them to the link.
 | 9.5a | The free COB-IDs are kept unused at both levels, the clause 6 slave and the minimal set |
 | 6.10b | Restricted COB-IDs are checked by `ocan_od` when a COB-ID is written; the dispatch uses the configured values as they are, apart from DS-TX-05 |
 | 11.1 | Remote frames are not used: the applicability matrix lists remotely requested and read PDOs and node guarding as not applicable |
-| Priority | The fixed transmit priority equals the order of the bus arbitration for the default COB-IDs, so the order of requests matches the bus priority of the pre-defined connection set |
+| Priority | When all sources are pending, the transmit order equals the order of the bus arbitration for the default COB-IDs. The round robin (DS-TX-01) bounds the wait of every source: the own heartbeat (700h + NODE-ID, the lowest bus priority) waits for at most one frame of each of the six other sources, a bound that the integrator checks against the consumer heartbeat time of the master |
