@@ -1,1 +1,2 @@
 # OpenCAN modules in dependency order (compiled into the library opencan by run.py)
+hdl/ocan_link
