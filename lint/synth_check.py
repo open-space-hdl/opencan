@@ -32,6 +32,11 @@ def configs():
         for limit in (13, 32, 1023):
             cfg.append(("ocan_link", {"BusAccess_g": access, "DominantLimit_g": str(limit)}, None))
     cfg.append(("ocan_link", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
+    for n in range(0, 5):
+        cfg.append(("ocan_dispatch", {"NumRpdo_g": str(n)}, None))
+        cfg.append(("ocan_dispatch", {"NumTpdo_g": str(n)}, None))
+    for flag in ("TimePdos_g", "SdoServer_g"):
+        cfg.append(("ocan_dispatch", {flag: "false"}, None))
     return cfg
 
 
