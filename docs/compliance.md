@@ -15,46 +15,46 @@ verify these requirements. A clause whose owner module has no testbench yet is p
 | 5.1.1 to 5.1.3 | Topology, bus length, number of devices | Out of scope, board | - | - | Out of scope |
 | 5.2.1, 5.2.2 | Cable, connectors | Out of scope, board | - | - | Out of scope |
 | 5.3.1 to 5.3.6 | Transceiver characteristics | Out of scope, board | - | - | Out of scope |
-| 5.4.1, 5.4.2 | Bit rates | `ocan_link` | - | - | Planned |
-| 5.4.3 | Bit timing | `ocan_link` | - | - | Planned |
+| 5.4.1, 5.4.2 | Bit rates | `ocan_link` | LK-PR-02 | - | Planned |
+| 5.4.3 | Bit timing | `ocan_link` | LK-IF-04, LK-PR-03, LK-PR-04 | - | Planned |
 | 5.5 | Electromagnetic compatibility | Out of scope, board | - | - | Out of scope |
-| 5.6.1 | ISO 11898 compliance of the data link layer | `ocan_link` | - | - | Planned |
-| 5.6.2 | Fault confinement, error state and counters | `ocan_link` | - | - | Planned |
-| 6.1 | Service data objects | `ocan_sdo` | - | - | Planned |
-| 6.2 | Process data objects | `ocan_pdo` | - | - | Planned |
-| 6.3 | Synchronisation object | `ocan_pdo` | - | - | Planned |
+| 5.6.1 | ISO 11898 compliance of the data link layer | `ocan_link` | DS-RX-02, LK-IF-02, LK-IF-03, LK-PR-01, LK-RX-01, LK-TX-01, LK-TX-02 | - | Planned |
+| 5.6.2 | Fault confinement, error state and counters | `ocan_link` | LK-BS-06, LK-FC-01, LK-FC-02, LK-FC-03, LK-IF-06, LK-PR-01, LK-TX-03 | - | Planned |
+| 6.1 | Service data objects | `ocan_sdo` | DS-IF-04, DS-RX-01 | - | Planned |
+| 6.2 | Process data objects | `ocan_pdo` | DS-IF-04, DS-IF-06, DS-RX-01, DS-TX-03 | - | Planned |
+| 6.3 | Synchronisation object | `ocan_pdo` | DS-IF-04, DS-RX-01, DS-RX-04 | - | Planned |
 | 6.4 | Emergency object | Not implemented (D9, optional object) | - | - | Not implemented |
 | 6.5.1 | Module control services | `ocan_nmt` | - | - | Planned |
-| 6.5.2 | Error control services, heartbeat | `ocan_nmt` | - | - | Planned |
+| 6.5.2 | Error control services, heartbeat | `ocan_nmt` | DS-IF-06 | - | Planned |
 | 6.5.3 | Bootup service | `ocan_nmt` | - | - | Planned |
 | 6.5.4 | Node state diagram | `ocan_nmt` | - | - | Planned |
 | 6.6 | Electronic data sheets | Out of scope, device | - | - | Out of scope |
 | 6.7 | Device and application profiles | Out of scope, device | - | - | Out of scope |
 | 6.8 | Object dictionary | `ocan_od` | - | - | Planned |
 | 6.9 | Synchronous communications | `ocan_pdo` | - | - | Planned |
-| 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | - | - | Planned |
+| 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | DS-CP-01, DS-CP-02, DS-IF-02, DS-IF-03, DS-IF-07, DS-RX-01, DS-RX-07, DS-TX-02, LK-BA-04, LK-IF-05 | - | Planned |
 | 7.1.1 | Time code formats | `ocan_time` | - | - | Planned |
 | 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | - | - | Planned |
 | 7.1.3 | Spacecraft UTC objects | Not implemented (D5, optional time code) | - | - | Not implemented |
 | 7.2.1 | Time distribution, general | `ocan_time` | - | - | Planned |
-| 7.2.2 | Time distribution protocol | `ocan_time` | - | - | Planned |
-| 7.2.3 | High-resolution time distribution protocol | `ocan_time` | - | - | Planned |
+| 7.2.2 | Time distribution protocol | `ocan_time` | DS-IF-04, DS-IF-06, DS-RX-01 | - | Planned |
+| 7.2.3 | High-resolution time distribution protocol | `ocan_time` | DS-RX-04, DS-RX-05, LK-RX-01 | - | Planned |
 | 8.1 | Redundancy master | Out of scope, master (D1) | - | - | Out of scope |
-| 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | - | - | Planned |
+| 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | LK-BA-01, LK-BA-02, LK-BA-03, LK-BS-02, LK-BS-03, LK-BS-05, LK-IF-01, LK-IF-03, LK-IF-05, LK-RX-02, LK-RX-03 | - | Planned |
 | 8.3.1 | Bus redundancy management parameters | `ocan_od` | - | - | Planned |
-| 8.3.2 | Start-up procedure | `ocan_redundancy` | - | - | Planned |
-| 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | - | - | Planned |
-| 9.1 | COB-ID assignment, minimal set | `ocan_nmt` | - | - | Planned |
+| 8.3.2 | Start-up procedure | `ocan_redundancy` | LK-BS-01 | - | Planned |
+| 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-IF-01, DS-IF-05, DS-RX-01, DS-RX-06, DS-TX-04, LK-BS-04 | - | Planned |
+| 9.1 | COB-ID assignment, minimal set | `ocan_nmt` | DS-RX-03, DS-TX-02 | - | Planned |
 | 9.2 | Object dictionary, minimal set | `ocan_od` | - | - | Planned |
-| 9.3 | Minimal set CANopen objects | `ocan_pdo` | - | - | Planned |
+| 9.3 | Minimal set CANopen objects | `ocan_pdo` | DS-RX-08 | - | Planned |
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | - | - | Planned |
 | 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | - | - | Planned |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | - | - | Planned |
-| 9.4.8 | Minimal set communication error object | `ocan_sdo` | - | - | Planned |
+| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03 | - | Planned |
 | 9.4.10 | Minimal set authorized objects | `ocan_od` | - | - | Planned |
-| 9.5 | Free COB-ID | `ocan_dispatch` | - | - | Planned |
+| 9.5 | Free COB-ID | `ocan_dispatch` | DS-TX-05 | - | Planned |
 | 10.1 to 10.5 | Connectors and pin assignments | Out of scope, board | - | - | Out of scope |
-| 11.1 | CANopen applicability matrix | `ocan_core` | - | - | Planned |
+| 11.1 | CANopen applicability matrix | `ocan_core` | DS-RX-02 | - | Planned |
 
 Clauses: 43; not implemented: 2; out of scope: 8; planned: 33.
 
@@ -65,7 +65,8 @@ reference included).
 
 | Module | Requirements | Verified by a test case | Without a test case |
 | --- | --- | --- | --- |
-| - | 0 | 0 | - |
+| `ocan_dispatch` | 26 | 0 | DS-IF-01, DS-IF-02, DS-IF-03, DS-IF-04, DS-IF-05, DS-IF-06, DS-IF-07, DS-RX-01, DS-RX-02, DS-RX-03, DS-RX-04, DS-RX-05, DS-RX-06, DS-RX-07, DS-RX-08, DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-TX-01, DS-TX-02, DS-TX-03, DS-TX-04, DS-TX-05, DS-CP-01, DS-CP-02 |
+| `ocan_link` | 29 | 0 | LK-IF-01, LK-IF-02, LK-IF-03, LK-IF-04, LK-IF-05, LK-IF-06, LK-BA-01, LK-BA-02, LK-BA-03, LK-BA-04, LK-PR-01, LK-PR-02, LK-PR-03, LK-PR-04, LK-BS-01, LK-BS-02, LK-BS-03, LK-BS-04, LK-BS-05, LK-BS-06, LK-RX-01, LK-RX-02, LK-RX-03, LK-TX-01, LK-TX-02, LK-TX-03, LK-FC-01, LK-FC-02, LK-FC-03 |
 
-Requirements: 0; without a test case in a module with a testbench: 0; test cases of
+Requirements: 55; without a test case in a module with a testbench: 0; test cases of
 the plans not run by a testbench: 0.

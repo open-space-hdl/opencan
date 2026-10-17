@@ -51,8 +51,8 @@ set at runtime from the system clock.
 ### Project
 
 OpenCAN belongs to the Open Space HDL family (`ocan_` prefix, VHDL library `opencan`). It builds on Open Logic
-4.7.0-ft.7 (fork open-space-hdl/open-logic-ft, `fault-tolerant` branch) for the CAN controller, FIFOs, RAMs and
-synchronisers.
+4.7.0-ft.7 (fork open-space-hdl/open-logic-ft, `fault-tolerant` branch) for the CAN controller, the bit timing,
+the arbiter, the strobe generator and the synchronisers.
 
 ### References
 
@@ -118,7 +118,8 @@ initiator of exchanges (unconfirmed commands and telemetry requests).
   SDO.
 - **Single point failures.** Clause 6.10d and 6.10k require that no single point failure makes a node accept a false
   COB-ID or NODE-ID.
-- **Radiation.** Frame buffers are SECDED protected, synchronisers triplicated, state machines recover from any state.
+- **Radiation.** The core has no frame memory (D11), synchronisers are triplicated, state machines recover from any
+  state.
 
 ## 4 Design goals
 
@@ -126,15 +127,15 @@ initiator of exchanges (unconfirmed commands and telemetry requests).
 2. One core for both bus access architectures and for both the full slave and the minimal set, selected by generics.
 3. Operation without a processor; an optional processor interface for configuration and status.
 4. Bus switching and heartbeat timing exact to one millisecond tick, independent of the load of the user logic.
-5. Moderate resource use: one or two CAN controllers, small frame buffers, the object dictionary of the
-   communication profile in registers.
+5. Moderate resource use: one or two CAN controllers, one register per received object, the object dictionary of
+   the communication profile in registers.
 
 ## 5 Design principles
 
 - The CAN protocol is `olo_intf_can`; OpenCAN never reimplements a part of it. A change that OpenCAN needs in the
   controller goes into Open Logic first.
-- Every block is a two-process state machine with registered outputs; every data path between blocks is a valid/ready
-  stream.
+- Every block is a two-process state machine with registered outputs. Frames to send pass as valid/ready streams;
+  received frames pass as events with a fixed latency, because a CAN receiver cannot hold back the bus (D11).
 - The protocol logic of clauses 6 to 9 is independent of the bus access architecture: the link layer offers one
   frame interface per bus and the active bus as a status.
 - Objects of the communication profile live in the core; application objects reach the user logic through one
@@ -148,7 +149,7 @@ the active bus](img/ocan_core_overview.drawio.svg)
 
 | Block | Function | Clauses |
 | --- | --- | --- |
-| `ocan_link` | Access to the nominal and the redundant bus: one controller and a bus selector or two controllers; frame buffers; error state and counters per controller | 5.4, 5.6, 8.2 |
+| `ocan_link` | Access to the nominal and the redundant bus: one controller and a bus selector or two controllers; bus switch; error state and counters per controller | 5.4, 5.6, 8.2 |
 | `ocan_dispatch` | Receive filter by COB-ID to the protocol blocks; transmit arbitration between heartbeat, boot-up, PDOs and SDO replies | 6.10, 11 |
 | `ocan_nmt` | NMT slave state machine, module control services, boot-up, heartbeat producer, NODE-ID check | 6.5, 6.10, 9.4.6, 9.4.9 |
 | `ocan_redundancy` | Start-up on Bdefault, master heartbeat consumer, bus toggling, Ctoggle, update of Bdefault | 8.3 |
@@ -172,6 +173,7 @@ the active bus](img/ocan_core_overview.drawio.svg)
 | D8 | The NODE-ID comes from pins with a protection code (the identifier and its complement), sampled at reset; the node does not communicate while the code is invalid. COB-IDs default to the pre-defined connection set, change only through SDO in Pre-operational and are held twice with a compare that detects a single upset | No single point failure makes the node use a false NODE-ID or COB-ID (clauses 6.10d, 6.10f, 6.10k) |
 | D9 | The emergency object of clause 6.4 is not implemented; the optional emergency message before a bus switch (clause 8.3.3, note 2) is not sent | The object is optional, clause 11 does not require the EMCY service, and an implementation would have to support all CANopen error codes (clause 6.4b). The conformance section of the user guide lists the clause as not implemented with this reason |
 | D10 | The CANopen protocols (NMT, heartbeat, SDO, PDO, SYNC) are specified from \[CiA301\]; the module specifications cite its sections by number | \[ECSS\] specifies the CANopen layer by reference to \[CiA301\] V4.2.0 and states its applicability in clause 11 |
+| D11 | Received frames are not buffered. `ocan_dispatch` classifies every frame in the cycle after its reception and passes it as an event with a fixed latency; the block that uses an object holds its last frame in a register | A CAN receiver cannot hold back the bus, so every consumer has to take each frame anyway. A buffer would delay the SYNC by a variable time, which the high-resolution time protocol cannot accept (clause 7.2.3k), and would be a memory that needs ECC. CANopen process data have last-value semantics |
 
 ### 6.2 Clock and reset
 
@@ -181,11 +183,11 @@ Node and Reset Communication reset the protocol state as defined by \[CiA301\], 
 
 ### 6.3 Internal interfaces
 
-- Link to dispatch: one receive frame stream per bus and one transmit frame stream to the active bus (identifier,
-  IDE, RTR, DLC, eight data bytes), the error state and counters of each controller.
+- Link to dispatch: the frames received on each bus as events (identifier, IDE, RTR, DLC, eight data bytes, D11)
+  and one transmit frame stream to the active bus, with its completion events.
 - Dispatch to the protocol blocks: frames of the active bus filtered by COB-ID (NMT, SYNC, master heartbeat, RPDOs,
-  SDO requests, Spacecraft Time PDO) and transmit requests with a fixed priority (heartbeat and boot-up, SDO replies,
-  TPDOs).
+  SDO requests, Spacecraft Time PDO) and transmit requests with a fixed priority in the order of the default
+  identifiers (TPDOs, Local Time PDO, SDO replies, heartbeat and boot-up).
 - Dispatch to redundancy: the reception of a master heartbeat and of an NMT message, per bus (section 6.5).
 - Redundancy to link and dispatch: the active bus and the enable and mode of each controller; redundancy to NMT: the
   request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e); NMT to redundancy: the NMT state.
@@ -247,7 +249,6 @@ They are written in dependency order: `ocan_link`, `ocan_dispatch`, `ocan_nmt`, 
 | --- | --- |
 | CAN 2.0B protocol, bit timing, error confinement | `olo_intf_can` |
 | Bit timing constants from a clock frequency and a bit rate | `canBitTiming` of `olo_intf_pkg_can` |
-| Frame buffers | `olo_ft_fifo_sync` (SECDED) |
 | Millisecond tick | `olo_base_strobe_gen` |
 | Transmit arbitration | `olo_base_arb_prio` |
 
