@@ -31,7 +31,7 @@ also reports the error state and the error counters of every controller.
 | LK-IF-04 | The link shall take the bit timing configuration (prescaler, PROP_SEG + PHASE_SEG1, PHASE_SEG2, SJW) as inputs common to all controllers. The configuration is applied while the link is disabled and is static while it is enabled. | 5.4.3a, 5.4.3d |
 | LK-IF-05 | The link shall take an enable input, the requested active bus, a bus-off recovery request and, per controller, a re-enable request after a dominant timeout. | 6.10f, 8.2.3a, 5.3.6b |
 | LK-IF-06 | The link shall provide the active bus and a busy indication while a bus switch is in progress. Per controller it shall provide the transmit and receive error counts, the fault confinement state (error active, error passive, bus off), the bus idle state, the error events (bit, stuff, CRC, form, acknowledgement), and the dominant timeout as an event and as a state. | 5.6.2a, 5.6.2b, 5.6.2c, 5.3.6b |
-| LK-IF-07 | The link shall have a fault injection input per controller that forces the transmit output of the controller dominant ahead of the dominant monitor. | 5.3.6b |
+| LK-IF-07 | The link shall have a fault injection test input per controller, inactive by default, that forces the transmit output of the controller dominant ahead of the dominant monitor. | 5.3.6b |
 
 ### 2.2 Bus access (LK-1, LK-2)
 
@@ -40,7 +40,7 @@ also reports the error state and the error counters of every controller.
 | LK-BA-01 | With selective bus access (`BusAccess_g` = "Selective") the link shall have one `olo_intf_can`. The bus selector connects its transmit output and receive input to the active bus. The transmit output of the other bus shall be recessive and its transmit enable inactive. | 8.2.1a, 8.2.3a |
 | LK-BA-02 | With parallel bus access (`BusAccess_g` = "Parallel") the link shall have one `olo_intf_can` per bus. The controller of the active bus runs in normal mode. The controller of the inactive bus runs in listen-only mode and the transmit enable of its bus is inactive. | 8.2.1a, 8.2.2a |
 | LK-BA-03 | The transmit enable of the active bus shall be active while its controller is enabled in normal mode, and inactive otherwise. | 8.2.3a |
-| LK-BA-04 | While the enable input is inactive, every controller shall be disabled, both transmit outputs recessive and both transmit enables inactive; no frame is passed or taken. | 6.10f |
+| LK-BA-04 | While the enable input is inactive, every controller shall be disabled, both transmit outputs recessive and both transmit enables inactive; no frame is passed or taken, and a frame pending at the disable is dropped and reported as aborted. | 6.10f |
 
 ### 2.3 Protocol and bit timing (LK-1)
 
