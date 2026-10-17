@@ -169,12 +169,13 @@ def main():
             status = "Out of scope"
         elif owner.startswith("Not implemented"):
             status = "Not implemented"
+        elif modules and not all(has_testbench(m) for m in modules):
+            # The owner module is not verified yet; test cases of other modules may already touch the clause
+            status = "Planned"
         elif test_ids and level == "Board":
             status = "Interface verified; board"
         elif test_ids:
             status = "Verified"
-        elif modules and not any(has_testbench(m) for m in modules):
-            status = "Planned"
         else:
             status = "Not traced"
             missing.append(clause)
