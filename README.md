@@ -9,8 +9,10 @@ VHDL Library. The core is vendor-independent VHDL-2008; buffers use the fault-to
 
 ## Status
 
-**In development.** The architecture is defined; no module is implemented yet. The
-[roadmap](docs/roadmap.md) lists the development phases and the state of every module.
+**In development.** The architecture is defined. The data link (`ocan_link`, nominal and redundant bus) and the frame
+dispatcher (`ocan_dispatch`) are implemented and verified with GHDL; the network management, the bus redundancy
+management, the time distribution and the CANopen services follow. The [roadmap](docs/roadmap.md) lists the
+development phases and the state of every module.
 
 ## Documentation
 
