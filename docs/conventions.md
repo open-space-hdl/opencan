@@ -11,8 +11,11 @@ document. This page lists the rules and the few OpenCAN-specific additions.
 - Entities are named `ocan_<function>` (for example `ocan_bus_monitor`). All OpenCAN sources are compiled into the VHDL
   library `opencan`; Open Logic is compiled into the library `olo`.
 - Language: VHDL-2008.
-- Arrays and vectors are indexed from 0 (ascending or descending). The AMD Vivado simulator mishandles a record field
-  whose range starts at 1, although GHDL and QuestaSim accept it.
+- A record field that is an array uses a fully constrained array type (`type T is array (0 to N - 1) of E`), not an
+  index constraint on an unconstrained array type (`U : T(0 to N - 1)`). The AMD Vivado simulator 2025.2 gives the
+  elements of such a field the constraint of another field when the record is accessed through an alias of an array
+  element, and stops at time 0 with an index error; GHDL and QuestaSim are correct. Vectors of scalars
+  (`std_logic_vector`, `unsigned`, `signed`) have no element constraint and are not affected.
 - Entities with non-trivial state use the two-process pattern of Open Logic: all registers in one `TwoProcess_r`
   record, signals `r` and `r_next`, a combinational process starting with `v := r;` and ending with
   `r_next <= v;`, a sequential process with `r <= r_next;` and the reset override at its end.
