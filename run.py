@@ -144,7 +144,9 @@ def set_simulator_options(vu):
     vu.set_sim_option("ghdl.sim_flags", ["--max-stack-alloc=0"] + extra, allow_empty=True)
     vu.set_sim_option("disable_ieee_warnings", True, allow_empty=True)
     vu.add_compile_option("modelsim.vcom_flags", ["-suppress", "1346,1236,1090"])
-    vu.set_sim_option("modelsim.vsim_flags", ["-suppress", "3009,3473,8684,8683"], allow_empty=True)
+    # QuestaSim at 1 fs, the resolution of GHDL: at the default of 1 ps, periods with fractions of a picosecond are
+    # truncated
+    vu.set_sim_option("modelsim.vsim_flags", ["-suppress", "3009,3473,8684,8683", "-t", "fs"], allow_empty=True)
 
 
 def merge_coverage(results):
