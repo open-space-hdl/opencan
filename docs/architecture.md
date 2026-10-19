@@ -51,7 +51,7 @@ set at runtime from the system clock.
 ### Project
 
 OpenCAN belongs to the Open Space HDL family (`ocan_` prefix, VHDL library `opencan`). It builds on Open Logic
-4.7.0-ft.8 (fork open-space-hdl/open-logic-ft, `fault-tolerant` branch) for the CAN controller, the bit timing,
+4.7.0-ft.9 (fork open-space-hdl/open-logic-ft, `fault-tolerant` branch) for the CAN controller, the bit timing,
 the arbiter, the strobe generator and the synchronisers.
 
 ### References
@@ -63,7 +63,7 @@ the arbiter, the strobe generator and the synchronisers.
 | \[ISO11898\] | ISO 11898-1:2003, Road vehicles, Controller area network (CAN), Part 1: Data link layer and physical signalling |
 | \[Bosch\] | CAN Specification 2.0, Robert Bosch GmbH, 1991 |
 | \[CCSDS301\] | CCSDS 301.0-B-4, Time code formats |
-| \[OLO\] | Open Logic VHDL library, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.8 |
+| \[OLO\] | Open Logic VHDL library, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.9 (2b0b02f) |
 
 ### Conventions
 
