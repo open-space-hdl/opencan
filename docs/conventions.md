@@ -11,6 +11,11 @@ document. This page lists the rules and the few OpenCAN-specific additions.
 - Entities are named `ocan_<function>` (for example `ocan_bus_monitor`). All OpenCAN sources are compiled into the VHDL
   library `opencan`; Open Logic is compiled into the library `olo`.
 - Language: VHDL-2008.
+- A record field that is an array uses a fully constrained array type (`type T is array (0 to N - 1) of E`), not an
+  index constraint on an unconstrained array type (`U : T(0 to N - 1)`). The AMD Vivado simulator 2025.2 gives the
+  elements of such a field the constraint of another field when the record is accessed through an alias of an array
+  element, and stops at time 0 with an index error; GHDL and QuestaSim are correct. Vectors of scalars
+  (`std_logic_vector`, `unsigned`, `signed`) have no element constraint and are not affected.
 - Entities with non-trivial state use the two-process pattern of Open Logic: all registers in one `TwoProcess_r`
   record, signals `r` and `r_next`, a combinational process starting with `v := r;` and ending with
   `r_next <= v;`, a sequential process with `r <= r_next;` and the reset override at its end.
@@ -92,8 +97,9 @@ its own unit testbench. `hdl/<module>/README.md` links the four documents and ex
 - A test passes only when UVVM reports no unexpected alerts and every expected alert occurred
   (`ocan_tb_pkg.ocanTestEnd`).
 - Tests observe ports and management interfaces only, never internal signals.
-- GHDL is the default simulator; QuestaSim (`python run.py --questa`) is used for code coverage
-  (`docs/coverage.md`). Every test passes in both simulators.
+- GHDL is the default simulator and the evidence of every pull request. QuestaSim (`python run.py --questa`) runs the
+  full regression of a release, with and without code coverage (`docs/coverage.md`), at a time resolution of 1 fs as
+  GHDL (`run.py` passes `-t fs`). Every test passes in both simulators.
 - `run.py` gives every GHDL simulation its own copy of the option `ghdl.sim_flags` and stops when a simulation command
   does not carry exactly the generics of its configuration (VUnit 5.0.0.dev7 shares that list between configurations).
 - A side effect is never obtained by calling an impure function and discarding its result: QuestaSim may remove such
@@ -107,6 +113,15 @@ its own unit testbench. `hdl/<module>/README.md` links the four documents and ex
 
 ## Git
 
-- `main` holds the integrated state. Every module or change is developed on a branch `feature/<module>` or
-  `bugfix/<topic>` and merged with `--no-ff` once its regression is green.
+- `develop` holds the integrated state and `main` the released state; both change only through pull requests.
+- Every module or change is developed on a branch `feature/<module>` or `bugfix/<topic>` from `develop` and merged
+  into `develop` through a pull request once its GHDL regression and the other checks of the CI are green.
+- A release is a branch `release/x.y.z` from `develop`. The full QuestaSim regression, with and without code coverage,
+  runs on its head; afterwards only `docs/coverage.md`, the run records of the verification reports, the version and
+  the change log change, no HDL. The branch merges into `main` through a pull request, the merge is tagged `vX.Y.Z`,
+  and `main` is merged back into `develop`. A fix of a release is a branch `hotfix/x.y.z` from `main` with the same
+  evidence.
+- Versions follow semantic versioning: 0.y.z while the core is at TRL 3, 1.0.0 with TRL 4 (hardware test). The major
+  version changes with an incompatible change of ports, generics, stream formats or register map, the minor version
+  with a new feature, the patch version with a fix.
 - Commit messages: imperative subject line, body explains what and why.
