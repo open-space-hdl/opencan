@@ -191,7 +191,10 @@ Node and Reset Communication reset the protocol state as defined by \[CiA301\], 
   most one frame of each other source.
 - Dispatch to redundancy: the reception of a master heartbeat and of an NMT message, per bus (section 6.5).
 - Redundancy to link and dispatch: the active bus and the enable and mode of each controller; redundancy to NMT: the
-  request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e); NMT to redundancy: the NMT state.
+  request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e), an event at every bus switch and
+  the state of the bus selection process; NMT to redundancy: the NMT state.
+- NMT to dispatch: the protected NODE-ID with its valid flag and the service enables; NMT to all blocks: the events
+  of the reset application and reset communication sub-states.
 - A millisecond tick (`olo_base_strobe_gen`) for the heartbeat producer, the heartbeat consumer and the toggling
   timer.
 
