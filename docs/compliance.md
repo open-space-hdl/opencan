@@ -24,7 +24,7 @@ verification plan are marked as planned.
 | 5.6.2 | Fault confinement, error state and counters | `ocan_link` | LK-BS-06, LK-FC-01, LK-FC-02, LK-FC-03, LK-IF-06, LK-PR-01, LK-TX-03 | TC-LK-01, TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-13, TC-LK-18 | Verified |
 | 6.1 | Service data objects | `ocan_sdo` | DS-IF-04, DS-RX-01 | TC-DS-01, TC-DS-14 | Planned |
 | 6.2 | Process data objects | `ocan_pdo` | DS-IF-04, DS-IF-06, DS-RX-01, DS-TX-03 | TC-DS-01, TC-DS-08, TC-DS-14 | Planned |
-| 6.3 | Synchronisation object | `ocan_pdo` | DS-IF-04, DS-RX-01, DS-RX-04 | TC-DS-01, TC-DS-14 | Planned |
+| 6.3 | Synchronisation object | `ocan_pdo` | DS-IF-04, DS-RX-01, DS-RX-04, TM-IF-01 | TC-DS-01, TC-DS-14 | Planned |
 | 6.4 | Emergency object | Not implemented (D9, optional object) | - | - | Not implemented |
 | 6.5.1 | Module control services | `ocan_nmt` | - | - | Planned |
 | 6.5.2 | Error control services, heartbeat | `ocan_nmt` | DS-IF-06, DS-TX-06 | TC-DS-08, TC-DS-09, TC-DS-12 | Planned |
@@ -35,12 +35,12 @@ verification plan are marked as planned.
 | 6.8 | Object dictionary | `ocan_od` | - | - | Planned |
 | 6.9 | Synchronous communications | `ocan_pdo` | - | - | Planned |
 | 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | DS-CP-01, DS-CP-02, DS-IF-02, DS-IF-03, DS-IF-07, DS-RX-01, DS-RX-07, DS-TX-02, LK-BA-04, LK-IF-05 | TC-DS-01, TC-DS-02, TC-DS-03, TC-DS-08, TC-DS-13, TC-DS-14, TC-LK-06, TC-LK-09, TC-LK-12, TC-LK-14 | Planned |
-| 7.1.1 | Time code formats | `ocan_time` | - | - | Planned |
-| 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | - | - | Planned |
+| 7.1.1 | Time code formats | `ocan_time` | TM-CT-01, TM-CT-02, TM-CT-03, TM-IF-05 | - | Planned |
+| 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | TM-CT-01, TM-CT-04, TM-CT-05, TM-IF-03, TM-RX-01, TM-TX-01 | - | Planned |
 | 7.1.3 | Spacecraft UTC objects | Not implemented (D5, optional time code) | - | - | Not implemented |
 | 7.2.1 | Time distribution, general | `ocan_time` | - | - | Planned |
-| 7.2.2 | Time distribution protocol | `ocan_time` | DS-IF-04, DS-IF-06, DS-RX-01 | TC-DS-01, TC-DS-08, TC-DS-14 | Planned |
-| 7.2.3 | High-resolution time distribution protocol | `ocan_time` | DS-RX-04, DS-RX-05, LK-RX-01 | TC-DS-01, TC-DS-05, TC-LK-01, TC-LK-03, TC-LK-17 | Planned |
+| 7.2.2 | Time distribution protocol | `ocan_time` | DS-IF-04, DS-IF-06, DS-RX-01, TM-IF-01, TM-IF-02, TM-IF-04, TM-RX-03, TM-TX-01, TM-TX-04, TM-TX-06 | TC-DS-01, TC-DS-08, TC-DS-14 | Planned |
+| 7.2.3 | High-resolution time distribution protocol | `ocan_time` | DS-RX-04, DS-RX-05, LK-RX-01, TM-IF-02, TM-IF-05, TM-IF-06, TM-RX-04, TM-RX-05, TM-SY-01, TM-TX-02, TM-TX-03, TM-TX-04 | TC-DS-01, TC-DS-05, TC-LK-01, TC-LK-03, TC-LK-17 | Planned |
 | 8.1 | Redundancy master | Out of scope, master (D1) | - | - | Out of scope |
 | 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | DS-RX-09, LK-BA-01, LK-BA-02, LK-BA-03, LK-BS-02, LK-BS-03, LK-BS-05, LK-DT-03, LK-IF-01, LK-IF-03, LK-IF-05, LK-RX-02, LK-RX-03 | TC-DS-04, TC-DS-06, TC-LK-01, TC-LK-02, TC-LK-03, TC-LK-06, TC-LK-07, TC-LK-08, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-17 | Verified |
 | 8.3.1 | Bus redundancy management parameters | `ocan_od` | - | - | Planned |
@@ -52,11 +52,11 @@ verification plan are marked as planned.
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | - | - | Planned |
 | 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | - | - | Planned |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | - | - | Planned |
-| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03 | TC-DS-02, TC-DS-08 | Planned |
+| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03, TM-RX-02, TM-SY-02 | TC-DS-02, TC-DS-08 | Planned |
 | 9.4.10 | Minimal set authorized objects | `ocan_od` | - | - | Planned |
 | 9.5 | Free COB-ID | `ocan_dispatch` | DS-TX-05 | TC-DS-02, TC-DS-11 | Verified |
 | 10.1 to 10.5 | Connectors and pin assignments | Out of scope, board | - | - | Out of scope |
-| 11.1 | CANopen applicability matrix | `ocan_core` | DS-RX-02 | TC-DS-02 | Planned |
+| 11.1 | CANopen applicability matrix | `ocan_core` | DS-RX-02, TM-RX-06, TM-TX-05 | TC-DS-02 | Planned |
 
 Clauses: 43; not implemented: 2; out of scope: 8; planned: 27; verified: 6.
 
@@ -69,6 +69,7 @@ reference included). A module without a testbench has planned test cases only.
 | --- | --- | --- | --- | --- |
 | `ocan_dispatch` | 29 | 29 | 0 | - |
 | `ocan_link` | 34 | 34 | 0 | - |
+| `ocan_time` | 25 | 0 | 0 | TM-IF-01, TM-IF-02, TM-IF-03, TM-IF-04, TM-IF-05, TM-IF-06, TM-CT-01, TM-CT-02, TM-CT-03, TM-CT-04, TM-CT-05, TM-SY-01, TM-SY-02, TM-RX-01, TM-RX-02, TM-RX-03, TM-RX-04, TM-RX-05, TM-RX-06, TM-TX-01, TM-TX-02, TM-TX-03, TM-TX-04, TM-TX-05, TM-TX-06 |
 
-Requirements: 63; without a test case in a module with a testbench or a verification plan:
+Requirements: 88; without a test case in a module with a testbench or a verification plan:
 0; test cases of modules with a testbench not run by a testbench: 0.
