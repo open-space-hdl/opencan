@@ -1588,6 +1588,24 @@ begin
                 waitCnt(CntSw, N_v + 1, 20 + 20, "first toggle of the second process after Pre-operational");
                 waitCnt(CntEnd, K_v + 1, 500, "end of the toggling of the second process");
                 check_value(CntSw - N_v, 2, ERROR, "two toggles in the second process");
+                -- N = 0: a first and a second process without a toggle, each ends the toggling with its own
+                -- Err_ToggleEnd (RM-SL-04)
+                Cfg_Ntoggle <= u8(0);
+                C0_v        := CntUpd;
+                nmt(act);
+                waitCnt(CntUpd, C0_v + 1, 10, "end of the second process");
+
+                for P in 1 to 2 loop
+                    K_v  := CntEnd;
+                    N_v  := CntSw;
+                    C0_v := CntMiss;
+                    waitCnt(CntMiss, C0_v + 1, 10 * 4 + 20, "missing heartbeat, N = 0");
+                    waitCnt(CntEnd, K_v + 1, 10, "Err_ToggleEnd with N = 0");
+                    check_value(CntSw, N_v, ERROR, "no toggle with N = 0");
+                    C0_v := CntUpd;
+                    nmt(act);
+                    waitCnt(CntUpd, C0_v + 1, 10, "end of the process, N = 0");
+                end loop;
 
             -- *** TC-RM-24: a due toggle and C = 0 ***
             elsif run("test_toggle_c0") then
