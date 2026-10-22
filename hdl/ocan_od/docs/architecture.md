@@ -21,7 +21,7 @@ of `Acc_Data` and `Rsp_Data`, so that an UNSIGNED32 written as 78h, 56h, 34h, 12
 | --- | --- |
 | `Acc_Write` | '1' write, '0' read |
 | `Acc_Index`, `Acc_Sub` | Index (16 bits) and sub-index (8 bits) |
-| `Acc_Data`, `Acc_Len` | Data bytes of a write (64 bits) and their number (1 to 8) |
+| `Acc_Data`, `Acc_Len` | Data bytes of a write (64 bits) and their number (1 to 8; 0 not indicated: the size of the data type is taken) |
 | `Rsp_Valid` | One-cycle answer |
 | `Rsp_Data`, `Rsp_Len` | Data bytes of a read and their number |
 | `Rsp_Abort` | Abort code; 0 for a successful access |
@@ -42,7 +42,7 @@ The checks of a write run in this order; the first failing check gives the abort
 | 1 | Object exists | 0602 0000h |
 | 2 | Sub-index exists | 0609 0011h |
 | 3 | Access type (write of ro or const, read of wo) | 0601 0002h, 0601 0001h |
-| 4 | Number of data bytes | 0607 0012h, 0607 0013h |
+| 4 | Number of data bytes, when indicated (`Acc_Len` 1 to 8) | 0607 0012h, 0607 0013h |
 | 5 | NMT state (OD-WR-03) | 0800 0022h |
 | 6 | Value: unsupported COB-ID bits, change while valid, restricted or free identifier, transmission type, 1016h, Bdefault | 0609 0030h |
 | 7 | Duplicate identifier | 0604 0043h |
