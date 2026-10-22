@@ -7,3 +7,4 @@ the Spacecraft Time PDO with the basic or the high-resolution protocol (TM-3) an
 | --- | --- |
 | [specification.md](docs/specification.md) | Requirements |
 | [architecture.md](docs/architecture.md) | Blocks, counter, ports |
+| [verification_plan.md](docs/verification_plan.md) | Test cases |
