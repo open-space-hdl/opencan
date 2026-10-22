@@ -19,5 +19,26 @@ The core is in development and has no technology readiness level yet. The
 | --- | --- | --- |
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | In work |
-| c | CANopen services and time distribution | Open |
+| c | CANopen services and time distribution | In work |
 | d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | Open |
+
+## Modules
+
+Every module has a specification, an architecture, a verification plan and a verification report in
+`hdl/<module>/docs/`. The figures come from the verification reports: the GHDL regression of the module, and the
+deliberate faults of the RTL that were each simulated with the tests that must detect them. A fault that changes the
+behaviour only after an upset, which the ports cannot inject, is covered by design review. QuestaSim runs once over
+all modules, with and without code coverage, for the first release.
+
+| Module | Phase | Function | GHDL regression | Deliberate faults |
+| --- | --- | --- | --- | --- |
+| `ocan_pkg` | b | Definitions that several modules share | 1 of 1 runs pass | - |
+| `ocan_link` | b | Access to the nominal and the redundant bus, bus switch, dominant monitor | 30 of 30 runs pass | 12, all detected |
+| `ocan_dispatch` | b | Receive filter by COB-ID, bus gate, transmit arbitration | 24 of 24 runs pass | 17, all detected |
+| `ocan_nmt` | b | NMT slave state machine, boot-up, heartbeat producer, NODE-ID check | 21 of 21 runs pass | 32: 31 detected, 1 by design review |
+| `ocan_redundancy` | b | Bus selection at start-up, master heartbeat consumer, bus toggling, update of Bdefault | 30 of 30 runs pass | 40: 37 detected, 3 by design review |
+| `ocan_time` | c | Local SCET, Spacecraft Time PDO consumer, Local Time PDO producer, sample at SYNC | 122 of 122 runs pass | 33: 32 detected, 1 by design review |
+| `ocan_od` | c | Object dictionary of the communication profile and of clause 8, object access port | Open | Open |
+| `ocan_sdo` | c | SDO server | Open | Open |
+| `ocan_pdo` | c | Receive and transmit PDOs, transmission types, SYNC consumer | Open | Open |
+| `ocan_core` | c | Top level, generics and ports | Open | Open |
