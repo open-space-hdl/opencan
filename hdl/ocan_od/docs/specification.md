@@ -140,6 +140,7 @@ transmit PDOs; they belong to the user logic (D7) and are reached through the ap
 | OD-MS-02 | With `MinimalSet_g` = true the parameters shall have these values: the COB-IDs of the receive and transmit PDOs 1 to 4 those of table 1, valid, with the transmission type 254 (Tables 9-3 to 9-6); the COB-ID of SYNC 0000 0080h (Tables 9-7 and 9-8); the producer heartbeat time, the consumer heartbeat time of the master, Bdefault, Ttoggle and Ntoggle the power-on values of the generics; Ctoggle and the update of Bdefault as in OD-IF-04. | 7.5.2.35, 7.5.2.37 | 8.3.2a, 8.3.3l, 9.3a, 9.4.2, 9.4.4, 9.4.7.3 |
 | OD-MS-03 | With `MinimalSet_g` = true and `TimePdos_g` = true the COB-IDs and the transmission types of the Spacecraft Time PDO and of the Local Time PDO shall be the values of the generics. No object 1404h, 1604h, 1804h, 1A04h or 2000h exists. | none | 7.1.2a, 9.2a, 9.4.10b, 9.4.10c |
 | OD-MS-04 | With `MinimalSet_g` = true the error register (OD-ER-01) shall be the status output; Bdefault shall be held in two copies (OD-PR-03). | 7.5.2.2 | 6.10d |
+| OD-MS-05 | With `MinimalSet_g` = true and `TimePdos_g` = true, `NumRpdo_g` and `NumTpdo_g` shall be at most 3, refused otherwise at elaboration, so that the node has at most four receive and four transmit PDOs (note to clause 9.3a; interpretation of the specification of `ocan_time`). | none | 9.3a |
 
 ## 3. Error conditions
 
@@ -161,7 +162,7 @@ transmit PDOs; they belong to the user logic (D7) and are reached through the ap
 | Generic | Default | Range | Description |
 | --- | --- | --- | --- |
 | `MinimalSet_g` | false | true, false | Minimal set of clause 9 (D2) |
-| `NumRpdo_g`, `NumTpdo_g` | 4 | 0 to 4; at most 3 with `MinimalSet_g` and `TimePdos_g` | Receive and transmit PDOs (D7). With the minimal set and the time PDOs at most 3 each, so that the node has at most four receive and four transmit PDOs (note to clause 9.3a); an assertion refuses other values |
+| `NumRpdo_g`, `NumTpdo_g` | 4 | 0 to 4; at most 3 with `MinimalSet_g` and `TimePdos_g` (OD-MS-05) | Receive and transmit PDOs (D7) |
 | `TimePdos_g` | true | true, false | Spacecraft Time PDO and Local Time PDO (D5) |
 | `DeviceType_g` | 0 | 32 bits | Value of 1000h |
 | `VendorId_g`, `ProductCode_g`, `Revision_g`, `SerialNumber_g` | 0 | 32 bits | Values of 1018h |
@@ -193,5 +194,5 @@ transmit PDOs; they belong to the user logic (D7) and are reached through the ap
 | \[CiA301\] 7.4.8, 7.5.2.36, 7.5.2.38 | The mapping is static (D7): the mapping objects are const and describe the eight data bytes of a PDO as eight UNSIGNED8 objects of the user logic |
 | \[CiA301\] 7.5.2.2 | Without the emergency object (D9) the error register is read through SDO only. Bit 7 is manufacturer-specific and records a parameter fall-back of OD-PR-03 |
 | \[CiA301\] 7.5.2.10, 7.5.2.11 | Storing and restoring parameters (1010h, 1011h) is not implemented; the power-on values are generics |
-| 9.3a, 7.1.1a, 7.1.2a, 7.2.1a | A minimal-set node that keeps time includes both time PDOs (interpretation of the specification of `ocan_time`). Their parameters are generics, not objects, so Table 9-12 and clause 9.4.10c hold: no object outside the authorised indices exists. The limit of `NumRpdo_g` and `NumTpdo_g` in section 4 keeps the node within the four receive and four transmit PDOs of the note to clause 9.3a |
+| 9.3a, 7.1.1a, 7.1.2a, 7.2.1a | A minimal-set node that keeps time includes both time PDOs (interpretation of the specification of `ocan_time`). Their parameters are generics, not objects, so Table 9-12 and clause 9.4.10c hold: no object outside the authorised indices exists. OD-MS-05 keeps the node within the four receive and four transmit PDOs of the note to clause 9.3a |
 | 9.2a (note), 9.4.10e | The object dictionary of the minimal set is fixed: the values of OD-MS-02 and OD-MS-03 are set by the generics and by the NODE-ID, and no object is reachable without an SDO server |

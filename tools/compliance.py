@@ -15,6 +15,8 @@ The owner of a clause is a module of OpenCAN (`ocan_<name>` in backticks), "Out 
 the test cases of its verification plan marked as planned. With --check the file is not written; the exit code is 1
 when a clause of a module with a testbench has no test case, when a requirement of a module with a testbench or a
 verification plan has no test case, or when a test case of a module with a testbench is not run by a testbench.
+A test case row of the form "TC-<ID> (`lint/synth_check.py`)" is a check of the synthesis script (for example a
+negative elaboration of a generic rule); it counts as run by `lint/synth_check.py`, not by a testbench.
 """
 
 import re
@@ -26,6 +28,7 @@ OUT = ROOT / "docs" / "compliance.md"
 CLAUSE_RE = re.compile(r"\d+(?:\.\d+)+")
 RANGE_RE = re.compile(r"(\d+(?:\.\d+)+)(?:([a-z]+)\d*)?(?:\s+to\s+(\d+(?:\.\d+)+))?")
 MODULE_RE = re.compile(r"`(ocan_\w+)`")
+SYNTH_RE = re.compile(r"^(TC-[A-Z]+-\d+) \(`lint/synth_check\.py`\)")
 
 
 def table_rows(text):
@@ -112,6 +115,9 @@ def load_tests():
                 target.setdefault(tid, set()).update(expand_ids(row[-1]))
                 if target is verified:
                     names.add(row[0].split("`")[1])
+            elif len(row) >= 3 and SYNTH_RE.match(row[0]):
+                # A test case of the synthesis check: run by lint/synth_check.py, not by a testbench
+                target.setdefault(SYNTH_RE.match(row[0]).group(1), set()).update(expand_ids(row[-1]))
     run_names = set()
     for tb in ROOT.glob("hdl/*/tb/*.vhd"):
         run_names.update(re.findall(r'run\("(test_\w+)"\)', tb.read_text(encoding="utf-8")))

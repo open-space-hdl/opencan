@@ -33,8 +33,8 @@ The integration with `ocan_sdo`, `ocan_dispatch` and the other blocks on the bus
 | `minimal_time` | `MinimalSet_g` = true, `TimePdos_g` = true, `NumRpdo_g` = 3, `NumTpdo_g` = 3 | Minimal set of a node that keeps time (TC-OD-19) |
 
 `NumRpdo_g`, `NumTpdo_g`, `TimePdos_g` and `MinimalSet_g` change the structure, so every value is simulated. The
-negative elaboration of the PDO limit of the minimal set with the time PDOs (`MinimalSet_g` and `TimePdos_g` with
-4 PDOs) and of the generic checks of architecture section 9 runs in `lint/synth_check.py`.
+negative elaboration of the PDO limit of the minimal set with the time PDOs (TC-OD-21: `MinimalSet_g` and
+`TimePdos_g` with 4 PDOs) and of the generic checks of architecture section 9 runs in `lint/synth_check.py`.
 
 Checkers that run in every test:
 
@@ -67,6 +67,7 @@ Checkers that run in every test:
 | `test_app_unconnected` (TC-OD-18) | The inputs of the application port at their default values: every access to 2003h to 9FFFh ends with 0602 0000h three cycles after the access | OD-AP-04 |
 | `test_minimal` (TC-OD-19) | Configurations `minimal` and `minimal_time`: no access taken, no request of the application port; the COB-ID table, the transmission types and the other outputs of OD-MS-02 and OD-MS-03; Bdefault with its update and an injected disagreement; the error register | OD-MS-01, OD-MS-02, OD-MS-03, OD-MS-04 |
 | `test_random` (TC-OD-20) | 20000 random accesses (existing and absent objects, valid and invalid values, every length, every NMT state) with random block updates, NODE-ID changes, resets and injected disagreements, compared with the reference in every cycle | OD-IF-01, OD-OB-01, OD-WR-01 to OD-WR-10, OD-PR-03 |
+| TC-OD-21 (`lint/synth_check.py`) | Negative elaboration: `MinimalSet_g` and `TimePdos_g` with `NumRpdo_g` = 4 and with `NumTpdo_g` = 4 are refused, with 3 and 3 accepted; `SctCobId_g` and `LtpCobId_g` restricted, free or equal are refused (architecture section 9) | OD-MS-05 |
 
 ## 4. Requirement coverage
 
@@ -114,6 +115,7 @@ Checkers that run in every test:
 | OD-MS-02 | TC-OD-19 |
 | OD-MS-03 | TC-OD-19 |
 | OD-MS-04 | TC-OD-19 |
+| OD-MS-05 | TC-OD-21 |
 
 ## 5. Negative tests
 
@@ -124,7 +126,7 @@ Checkers that run in every test:
 | COB-ID copies that disagree | TC-OD-12 |
 | Other parameter copies that disagree | TC-OD-13 |
 | Missing, late and stray responses of the user logic | TC-OD-16, TC-OD-17 |
-| Generics outside the rules of architecture section 9 and the PDO limit of the minimal set | `lint/synth_check.py` |
+| Generics outside the rules of architecture section 9 and the PDO limit of the minimal set | TC-OD-21 |
 
 A deliberate fault of the RTL for every write rule, every abort code, the compare and the repair of the copies, the
 latch, the precedence rules and the time-out of the application port is simulated with the tests that must detect

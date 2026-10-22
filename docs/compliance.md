@@ -49,7 +49,7 @@ verification plan are marked as planned.
 | 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-IF-01, DS-IF-05, DS-RX-01, DS-RX-06, DS-TX-04, DS-TX-06, LK-BS-04, NM-HB-02, NM-HB-03, NM-HB-05, NM-HB-07, NM-IF-06, NM-MS-03, NM-SM-04, NM-SM-05, OD-IF-04, OD-MS-02, OD-WR-10, RM-HB-02, RM-HB-05, RM-IF-01, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07, RM-SL-09 | TC-DS-01, TC-DS-03, TC-DS-04, TC-DS-05, TC-DS-07, TC-DS-09, TC-DS-10, TC-DS-12, TC-DS-14, TC-LK-07, TC-NM-01, TC-NM-05, TC-NM-08, TC-NM-09, TC-NM-10, TC-NM-11, TC-NM-12, TC-NM-13, TC-NM-14, TC-NM-15, TC-NM-16, TC-NM-17, TC-NM-19, TC-NM-21, TC-RM-01, TC-RM-02, TC-RM-03, TC-RM-04, TC-RM-05, TC-RM-07, TC-RM-08, TC-RM-09, TC-RM-10, TC-RM-11, TC-RM-12, TC-RM-13, TC-RM-14, TC-RM-15, TC-RM-16, TC-RM-17, TC-RM-18, TC-RM-19, TC-RM-20, TC-RM-22, TC-RM-23, TC-RM-24, TC-RM-25, TC-OD-08 (planned), TC-OD-09 (planned), TC-OD-11 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Verified |
 | 9.1 | COB-ID assignment, minimal set | `ocan_nmt` | DS-RX-03, DS-TX-02, NM-IF-01 | TC-DS-02, TC-DS-08, TC-NM-01, TC-NM-02 | Verified |
 | 9.2 | Object dictionary, minimal set | `ocan_od` | OD-MS-01, OD-MS-03 | TC-OD-19 (planned) | Planned |
-| 9.3 | Minimal set CANopen objects | `ocan_pdo` | DS-RX-08, OD-MS-02 | TC-DS-07, TC-OD-19 (planned) | Planned |
+| 9.3 | Minimal set CANopen objects | `ocan_pdo` | DS-RX-08, OD-MS-02, OD-MS-05 | TC-DS-07, TC-OD-19 (planned), TC-OD-21 (planned) | Planned |
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | OD-IF-06, OD-MS-02, OD-WR-06 | TC-OD-07 (planned), TC-OD-09 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Planned |
 | 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | NM-MS-01, NM-MS-02, NM-MS-03, RM-MS-02, RM-SL-05 | TC-NM-13, TC-RM-01, TC-RM-09, TC-RM-15, TC-RM-16, TC-RM-17, TC-RM-25 | Verified |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | OD-MS-02 | TC-OD-19 (planned) | Planned |
@@ -71,10 +71,10 @@ reference included). A module without a testbench has planned test cases only.
 | `ocan_dispatch` | 29 | 29 | 0 | - |
 | `ocan_link` | 34 | 34 | 0 | - |
 | `ocan_nmt` | 29 | 29 | 0 | - |
-| `ocan_od` | 42 | 0 | 42 | - |
+| `ocan_od` | 43 | 0 | 43 | - |
 | `ocan_pkg` | 1 | 1 | 0 | - |
 | `ocan_redundancy` | 24 | 24 | 0 | - |
 | `ocan_time` | 28 | 28 | 0 | - |
 
-Requirements: 187; without a test case in a module with a testbench or a verification plan:
+Requirements: 188; without a test case in a module with a testbench or a verification plan:
 0; test cases of modules with a testbench not run by a testbench: 0.

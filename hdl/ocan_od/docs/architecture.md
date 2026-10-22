@@ -164,7 +164,7 @@ port left unconnected answers every request with 0602 0000h two cycles after the
 With `MinimalSet_g` = true, `Acc_Ready` is '0' and `App_ReqValid` is '0'. The parameters are constants of the
 generics, except Bdefault, which keeps its two copies and the update of OD-IF-04. The COB-IDs of the receive and
 transmit PDOs 1 to 4 have `Rel` = '1' and are valid; the transmission types are 254 (OD-MS-02). An assertion refuses
-`TimePdos_g` = true with `NumRpdo_g` or `NumTpdo_g` above 3 (specification, section 4).
+`TimePdos_g` = true with `NumRpdo_g` or `NumTpdo_g` above 3 (OD-MS-05).
 
 ## 8. Ports of ocan_od
 
