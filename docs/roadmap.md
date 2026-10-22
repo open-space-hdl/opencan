@@ -18,7 +18,7 @@ The core is in development and has no technology readiness level yet. The
 | Phase | Content | State |
 | --- | --- | --- |
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
-| b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done |
+| b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | In work |
 | c | CANopen services and time distribution | In work |
 | d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | Open |
 
