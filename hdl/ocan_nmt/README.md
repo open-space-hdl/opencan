@@ -1,0 +1,10 @@
+# ocan_nmt
+
+Network management slave of OpenCAN: the NODE-ID check with its protection code (NM-1), the NMT state machine with
+the node control services and the service enables (NM-2), and the boot-up message and the heartbeat producer (NM-3).
+
+| Document | Content |
+| --- | --- |
+| [specification.md](docs/specification.md) | Requirements |
+| [architecture.md](docs/architecture.md) | Blocks, ports, state machines |
+| [verification_plan.md](docs/verification_plan.md) | Test cases |
