@@ -3,3 +3,4 @@ hdl/ocan_link/src/ocan_link.vhd
 hdl/ocan_dispatch/src/ocan_dispatch.vhd
 hdl/ocan_nmt/src/ocan_nmt.vhd
 hdl/ocan_redundancy/src/ocan_redundancy.vhd
+hdl/ocan_time/src/ocan_time.vhd
