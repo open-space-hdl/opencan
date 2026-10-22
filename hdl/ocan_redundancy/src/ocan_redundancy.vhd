@@ -187,7 +187,7 @@ begin
                 v.PresMs(B)  := (others => '0');
                 v.Present(B) := '1';
             elsif Tick_Ms = '1' and r.Present(B) = '1' then
-                if r.PresMs(B) = C_v - 1 then
+                if r.PresMs(B) >= C_v - 1 then
                     v.PresMs(B)  := (others => '0');
                     v.Present(B) := '0';
                 else
@@ -200,7 +200,7 @@ begin
         ParChg_v := Cfg_HbTime /= r.HbTimeReg or Cfg_Ttoggle /= r.TtoggleReg;
         HbRst_v  := r.Fsm = Monitor_s and HbOk_v(A_v) = '1';
         if Tick_Ms = '1' and C_v /= 0 and r.Fsm /= Idle_s and not ParChg_v and not HbRst_v then
-            if r.TmrMs = C_v - 1 then
+            if r.TmrMs >= C_v - 1 then
                 v.TmrMs := (others => '0');
                 if r.TmrPer >= T_v - 1 then
                     v.TmrPer := (others => '0');
@@ -225,9 +225,14 @@ begin
                     v.Ctoggle   := (others => '0');
                     v.ToggleDue := '0';
                     v.Exhausted := '0';
+                    v.EndAfter  := '0';
                     Restart_v   := true;
                 elsif MinimalSet_g and Nmt_State /= NmtInit_c then
                     -- Minimal set: monitoring from the end of the Initialisation (RM-MS-02)
+                    v.Fsm     := Monitor_s;
+                    Restart_v := true;
+                elsif Nmt_State = NmtOp_c or Nmt_State = NmtStopped_c then
+                    -- Operational or Stopped without Pre-operational, only after an upset: monitoring (RM-SL-01)
                     v.Fsm     := Monitor_s;
                     Restart_v := true;
                 else
@@ -242,6 +247,7 @@ begin
                     v.Ctoggle    := (others => '0');
                     v.ToggleDue  := '1';
                     v.Exhausted  := '0';
+                    v.EndAfter   := '0';
                     v.Fsm        := Select_s;
                     Restart_v    := true;
                 end if;
@@ -258,7 +264,7 @@ begin
                     v.ReqBus   := not Link_ActiveBus;
                     v.EndAfter := '1';
                     v.Fsm      := Switch_s;
-                elsif r.ToggleDue = '1' and PreOp_v and r.Ctoggle < unsigned(Cfg_Ntoggle) then
+                elsif r.ToggleDue = '1' and PreOp_v and C_v /= 0 and r.Ctoggle < unsigned(Cfg_Ntoggle) then
                     -- Toggle (RM-SL-03, RM-SL-04, RM-SL-09)
                     v.ReqBus    := not r.ReqBus;
                     v.Ctoggle   := r.Ctoggle + 1;
@@ -275,6 +281,12 @@ begin
                     end if;
                 elsif Expire_v then
                     v.ToggleDue := '1';
+                end if;
+                -- A due toggle waits for Pre-operational: request it again at every expiry while ocan_nmt is in
+                -- Operational or Stopped (RM-SL-03)
+                if Expire_v and v.Fsm = Select_s and v.ToggleDue = '1' and
+                   (Nmt_State = NmtOp_c or Nmt_State = NmtStopped_c) then
+                    v.PreopReq := '1';
                 end if;
 
             when Switch_s =>

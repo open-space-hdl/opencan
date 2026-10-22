@@ -93,9 +93,12 @@ architecture sim of ocan_redundancy_tb is
     -- Pre-operational NmtDly cycles after Nmt_PreopReq ***
     signal NmtTarget : std_logic_vector(1 downto 0) := NmtInit_c;
     signal NmtDly    : natural                      := 1;
+    -- The NMT model does not follow Nmt_PreopReq while NmtIgnore
+    signal NmtIgnore : boolean := false;
 
-    -- *** Model of ocan_link: disabled during Rst and 4 cycles after it (the active bus is Link_Bus, LK-BS-01), then
-    -- a change of Link_Bus takes SwDly cycles with Link_Switching = '1' ***
+    -- *** Model of ocan_link: disabled during Rst and 4 cycles after it (the active bus is Link_Bus, LK-BS-01). A
+    -- change of Link_Bus: Link_Switching = '1' from the next cycle, after SwDly cycles the other active bus, and
+    -- Link_Switching = '0' one cycle later, as the abort and switch states of ocan_link ***
     signal SwDly : natural := 3;
 
     -- *** Monitors: counts and the cycle of the last event ***
@@ -113,6 +116,7 @@ architecture sim of ocan_redundancy_tb is
     signal CycSwEnd : natural := 0;
     signal CycBus   : natural := 0;
     signal CycPreOp : natural := 0;
+    signal CycReq   : natural := 0;
 
     -- *** Reference model ***
     signal CheckEn     : boolean := false;
@@ -209,7 +213,9 @@ begin
                 Nmt_State <= NmtTarget;
                 Last_v    := NmtTarget;
                 Cnt_v     := -1;
-            elsif Nmt_PreopReq = '1' and (Nmt_State = NmtOp_c or Nmt_State = NmtStopped_c) then
+            elsif Nmt_PreopReq = '1' and (Nmt_State = NmtOp_c or Nmt_State = NmtStopped_c) and not NmtIgnore and
+                  Cnt_v < 0 then
+                -- A running delay is kept, as ocan_nmt follows the first request
                 Cnt_v := NmtDly;
             end if;
             if Cnt_v = 0 then
@@ -225,29 +231,41 @@ begin
     -- Model of ocan_link
     -----------------------------------------------------------------------------------------------
     p_link : process (Clk) is
-        variable Cnt_v : integer := -1;
-        variable Dis_v : natural := 0;
+        variable Ph_v  : natural range 0 to 2 := 0;  -- 0 run, 1 abort, 2 switch
+        variable Cnt_v : natural              := 0;
+        variable Dis_v : natural              := 0;
     begin
         if rising_edge(Clk) then
             if Rst = '1' or Dis_v > 0 then
                 Link_ActiveBus <= Link_Bus;
                 Link_Switching <= '0';
-                Cnt_v          := -1;
+                Ph_v           := 0;
                 if Rst = '1' then
                     Dis_v := 4;
                 else
                     Dis_v := Dis_v - 1;
                 end if;
-            elsif Cnt_v < 0 and Link_Bus /= Link_ActiveBus then
-                Link_Switching <= '1';
-                Cnt_v          := SwDly;
-            end if;
-            if Cnt_v = 0 then
-                Link_ActiveBus <= Link_Bus;
-                Link_Switching <= '0';
-                Cnt_v          := -1;
-            elsif Cnt_v > 0 then
-                Cnt_v := Cnt_v - 1;
+            else
+
+                case Ph_v is
+                    when 0 =>
+                        if Link_Bus /= Link_ActiveBus then
+                            Link_Switching <= '1';
+                            Cnt_v          := SwDly;
+                            Ph_v           := 1;
+                        end if;
+                    when 1 =>
+                        if Cnt_v <= 1 then
+                            Link_ActiveBus <= not Link_ActiveBus;
+                            Ph_v           := 2;
+                        else
+                            Cnt_v := Cnt_v - 1;
+                        end if;
+                    when others =>
+                        Link_Switching <= '0';
+                        Ph_v           := 0;
+                end case;
+
             end if;
         end if;
     end process;
@@ -282,6 +300,7 @@ begin
             end if;
             if Nmt_PreopReq = '1' then
                 CntPreop <= CntPreop + 1;
+                CycReq   <= Cyc;
             end if;
             if Rx_HbValid /= "00" or Rx_NmtValid /= "00" then
                 CycHb <= Cyc;
@@ -302,79 +321,90 @@ begin
     end process;
 
     -----------------------------------------------------------------------------------------------
-    -- Reference model, written from the specification and the architecture tables
+    -- Reference model, derived from the requirements of the specification (cited per rule). It keeps the state in
+    -- the terms of the specification: not started, master heartbeat monitoring, bus selection process (waiting for
+    -- the report of the link or not), the toggle that fell due, the end of the toggling that was reported, the end
+    -- after the running switch; the timer is one count of ticks since its last restart.
     -----------------------------------------------------------------------------------------------
     p_model : process is
-        type St_t is (MIdle, MMonitor, MSelect, MSwitch);
+        type Phase_t is (NotStarted, Monitoring, Selection);
         type Nat2_a is array (0 to 1) of natural;
 
-        variable St_v      : St_t      := MIdle;
-        variable Req_v     : std_logic := '0';
-        variable Ct_v      : natural   := 0;
-        variable Due_v     : boolean   := false;
-        variable Exh_v     : boolean   := false;
-        variable EndAf_v   : boolean   := false;
-        -- Rem_v: counted ticks to the next expiry; Ev_v: Preop, Sw, Upd, Miss, End, Dlc
-        variable Rem_v     : natural                       := 0;
+        -- Phase, the requested bus not yet reported by the link, the requested bus, Ctoggle, the toggle that fell
+        -- due, the end of the toggling reported, the end after the running switch (RM-SL-06), ticks since the restart
+        variable Phase_v   : Phase_t                       := NotStarted;
+        variable WaitLk_v  : boolean                       := false;
+        variable Req_v     : std_logic                     := '0';
+        variable Ct_v      : natural                       := 0;
+        variable Due_v     : boolean                       := false;
+        variable EndRep_v  : boolean                       := false;
+        variable EndSw_v   : boolean                       := false;
+        variable Elap_v    : natural                       := 0;
         variable PrevC_v   : std_logic_vector(15 downto 0) := (others => '0');
         variable PrevT_v   : std_logic_vector(7 downto 0)  := (others => '0');
-        variable PresCnt_v : Nat2_a                        := (0, 0);
+        variable Since_v   : Nat2_a                        := (0, 0);
         variable Pres_v    : std_logic_vector(1 downto 0)  := "00";
         variable HbSt_v    : std_logic_vector(7 downto 0)  := (others => '0');
-        variable Ev_v      : std_logic_vector(6 downto 0)  := (others => '0');
-        variable UpdB_v    : std_logic                     := '0';
+        -- Events of the cycle: Preop, Switched, Upd, Miss, End, Dlc
+        variable Ev_v      : std_logic_vector(5 downto 0) := (others => '0');
+        variable UpdB_v    : std_logic                    := '0';
         variable C_v       : natural;
         variable T_v       : natural;
         variable N_v       : natural;
-        variable HbOk_v    : std_logic_vector(1 downto 0);
+        variable A_v       : natural range 0 to 1;
+        variable I_v       : natural range 0 to 1;
+        variable R_v       : natural range 0 to 1;
+        variable Hb_v      : std_logic_vector(1 downto 0);
         variable Msg_v     : std_logic_vector(1 downto 0);
-        variable A_v       : natural;
-        variable I_v       : natural;
-        variable R_v       : natural;
         variable ParChg_v  : boolean;
         variable HbRst_v   : boolean;
-        variable Exp_v     : boolean;
-        variable Rs_v      : boolean;
+        variable Expire_v  : boolean;
+        variable Restart_v : boolean;
         variable PreOp_v   : boolean;
+        variable OpSt_v    : boolean;
     begin
         wait until rising_edge(Clk);
 
         if Rst = '1' then
-            St_v      := MIdle;
-            Req_v     := '0';
-            Ct_v      := 0;
-            Due_v     := false;
-            Exh_v     := false;
-            EndAf_v   := false;
-            Rem_v     := 0;
-            PrevC_v   := (others => '0');
-            PrevT_v   := (others => '0');
-            PresCnt_v := (0,
-                          0);
-            Pres_v    := "00";
-            HbSt_v    := (others => '0');
-            Ev_v      := (others => '0');
-            UpdB_v    := '0';
+            Phase_v  := NotStarted;
+            WaitLk_v := false;
+            Req_v    := '0';
+            Ct_v     := 0;
+            Due_v    := false;
+            EndRep_v := false;
+            EndSw_v  := false;
+            Elap_v   := 0;
+            PrevC_v  := (others => '0');
+            PrevT_v  := (others => '0');
+            Since_v  := (0,
+                         0);
+            Pres_v   := "00";
+            HbSt_v   := (others => '0');
+            Ev_v     := (others => '0');
+            UpdB_v   := '0';
         else
             Ev_v := (others => '0');
-            C_v  := to_integer(unsigned(Cfg_HbTime));
-            T_v  := to_integer(unsigned(Cfg_Ttoggle));
-            N_v  := to_integer(unsigned(Cfg_Ntoggle));
+            -- Parameters: Ttoggle = 0 acts as 1 (RM-HB-04)
+            C_v := to_integer(unsigned(Cfg_HbTime));
+            T_v := to_integer(unsigned(Cfg_Ttoggle));
+            N_v := to_integer(unsigned(Cfg_Ntoggle));
             if T_v = 0 then
                 T_v := 1;
             end if;
             PreOp_v := Nmt_State = NmtPreOp_c;
+            OpSt_v  := Nmt_State = NmtOp_c or Nmt_State = NmtStopped_c;
 
+            -- Master heartbeats: DLC 1, any state byte; another DLC is an error event (RM-HB-01)
             for B in 0 to 1 loop
-                if Rx_HbValid(B) = '1' and unsigned(Rx_HbDlc(4 * B + 3 downto 4 * B)) = 1 then
-                    HbOk_v(B) := '1';
-                else
-                    HbOk_v(B) := '0';
+                Hb_v(B) := '0';
+                if Rx_HbValid(B) = '1' then
+                    if unsigned(Rx_HbDlc(4 * B + 3 downto 4 * B)) = 1 then
+                        Hb_v(B) := '1';
+                    else
+                        Ev_v(5) := '1';
+                    end if;
                 end if;
-                if Rx_HbValid(B) = '1' and unsigned(Rx_HbDlc(4 * B + 3 downto 4 * B)) /= 1 then
-                    Ev_v(5) := '1';
-                end if;
-                Msg_v(B) := HbOk_v(B) or Rx_NmtValid(B);
+                Msg_v(B) := Hb_v(B) or Rx_NmtValid(B);
             end loop;
 
             if Link_ActiveBus = '1' then
@@ -388,114 +418,145 @@ begin
             else
                 R_v := 0;
             end if;
-            if HbOk_v(A_v) = '1' then
+
+            -- State byte of the last master heartbeat on the active bus (RM-IF-07)
+            if Hb_v(A_v) = '1' then
                 HbSt_v := Rx_HbState(8 * A_v + 7 downto 8 * A_v);
             end if;
 
-            -- Presence: ticks since the last master heartbeat of each bus
+            -- Presence: set by a master heartbeat, cleared when none arrived for C ticks; with C = 0 cleared (RM-HB-05)
             for B in 0 to 1 loop
                 if C_v = 0 then
-                    PresCnt_v(B) := 0;
-                    Pres_v(B)    := '0';
-                elsif HbOk_v(B) = '1' then
-                    PresCnt_v(B) := 0;
-                    Pres_v(B)    := '1';
+                    Since_v(B) := 0;
+                    Pres_v(B)  := '0';
+                elsif Hb_v(B) = '1' then
+                    Since_v(B) := 0;
+                    Pres_v(B)  := '1';
                 elsif Tick_Ms = '1' and Pres_v(B) = '1' then
-                    PresCnt_v(B) := PresCnt_v(B) + 1;
-                    if PresCnt_v(B) >= C_v then
-                        PresCnt_v(B) := 0;
-                        Pres_v(B)    := '0';
+                    Since_v(B) := Since_v(B) + 1;
+                    if Since_v(B) >= C_v then
+                        Since_v(B) := 0;
+                        Pres_v(B)  := '0';
                     end if;
                 end if;
             end loop;
 
-            -- Timer: remaining counted ticks to the expiry
-            ParChg_v := Cfg_HbTime /= PrevC_v or Cfg_Ttoggle /= PrevT_v;
-            HbRst_v  := St_v = MMonitor and HbOk_v(A_v) = '1';
-            Exp_v    := false;
-            Rs_v     := false;
-            if Tick_Ms = '1' and C_v /= 0 and St_v /= MIdle and not ParChg_v and not HbRst_v then
-                if Rem_v > 0 then
-                    Rem_v := Rem_v - 1;
-                end if;
-                if Rem_v = 0 then
-                    Exp_v := true;
-                    Rem_v := T_v * C_v;
+            -- Timer: ticks since the last restart, expiry at T x C ticks; no expiry with C = 0 (RM-HB-02 to RM-HB-04,
+            -- RM-SL-04). A restart and a tick in one cycle: the tick is not counted
+            ParChg_v  := Cfg_HbTime /= PrevC_v or Cfg_Ttoggle /= PrevT_v;
+            HbRst_v   := Phase_v = Monitoring and Hb_v(A_v) = '1';
+            Expire_v  := false;
+            Restart_v := false;
+            if Phase_v /= NotStarted and C_v /= 0 and Tick_Ms = '1' and not ParChg_v and not HbRst_v then
+                Elap_v := Elap_v + 1;
+                if Elap_v >= T_v * C_v then
+                    Elap_v   := 0;
+                    Expire_v := true;
                 end if;
             end if;
 
-            case St_v is
-                when MIdle =>
+            case Phase_v is
+
+                when NotStarted =>
                     if not MinimalSet_g and PreOp_v then
-                        St_v  := MSelect;
-                        Ct_v  := 0;
-                        Due_v := false;
-                        Exh_v := false;
-                        Rs_v  := true;
+                        -- Start-up process on Bdefault without a switch, Ctoggle = 0 (RM-SL-01)
+                        Phase_v   := Selection;
+                        WaitLk_v  := false;
+                        Ct_v      := 0;
+                        Due_v     := false;
+                        EndRep_v  := false;
+                        EndSw_v   := false;
+                        Restart_v := true;
                     elsif MinimalSet_g and Nmt_State /= NmtInit_c then
-                        St_v := MMonitor;
-                        Rs_v := true;
+                        -- Minimal set: monitoring when the node leaves the Initialisation (RM-MS-02)
+                        Phase_v   := Monitoring;
+                        Restart_v := true;
+                    elsif not MinimalSet_g and OpSt_v then
+                        -- Operational or Stopped without Pre-operational: monitoring at once (RM-SL-01)
+                        Phase_v   := Monitoring;
+                        Restart_v := true;
                     else
+                        -- Requested bus Bdefault after the hardware reset (RM-SL-01)
                         Req_v := Cfg_Bdefault;
                     end if;
-                when MMonitor =>
-                    if Exp_v then
-                        Ev_v(3) := '1';
-                        Ev_v(0) := '1';
-                        Ct_v    := 0;
-                        Due_v   := true;
-                        Exh_v   := false;
-                        St_v    := MSelect;
-                        Rs_v    := true;
+
+                when Monitoring =>
+                    if Expire_v then
+                        -- Missing master heartbeat: event, Pre-operational request, process with Ctoggle = 0 and
+                        -- the first toggle due (RM-HB-02, RM-SL-02)
+                        Ev_v(3)   := '1';
+                        Ev_v(0)   := '1';
+                        Phase_v   := Selection;
+                        WaitLk_v  := false;
+                        Ct_v      := 0;
+                        Due_v     := true;
+                        EndRep_v  := false;
+                        EndSw_v   := false;
+                        Restart_v := true;
                     end if;
-                when MSelect =>
-                    if Msg_v(A_v) = '1' then
-                        Ev_v(2) := '1';
-                        UpdB_v  := Link_ActiveBus;
-                        St_v    := MMonitor;
-                        Rs_v    := true;
+
+                when Selection =>
+                    if WaitLk_v then
+                        if Link_Switching = '0' and Link_ActiveBus = Req_v then
+                            -- The link reports the new bus: switch event (RM-SL-03); end after a message (RM-SL-06)
+                            Ev_v(1)  := '1';
+                            WaitLk_v := false;
+                            if EndSw_v then
+                                Ev_v(2)   := '1';
+                                UpdB_v    := Req_v;
+                                EndSw_v   := false;
+                                Phase_v   := Monitoring;
+                                Restart_v := true;
+                            end if;
+                        elsif Msg_v(R_v) = '1' then
+                            -- A message on the requested bus ends the process after the switch
+                            EndSw_v := true;
+                        elsif Expire_v then
+                            Due_v := true;
+                        end if;
+                    elsif Msg_v(A_v) = '1' then
+                        -- A message on the active bus ends the process, also over one of the inactive bus
+                        -- (RM-SL-05, RM-SL-06)
+                        Ev_v(2)   := '1';
+                        UpdB_v    := Link_ActiveBus;
+                        Phase_v   := Monitoring;
+                        Restart_v := true;
                     elsif Msg_v(I_v) = '1' then
-                        Req_v   := not Link_ActiveBus;
-                        EndAf_v := true;
-                        St_v    := MSwitch;
-                    elsif Due_v and PreOp_v and Ct_v < N_v then
-                        Req_v := not Req_v;
-                        Ct_v  := Ct_v + 1;
-                        Due_v := false;
-                        Exh_v := false;
-                        St_v  := MSwitch;
-                        Rs_v  := true;
+                        -- A message on the inactive bus: that bus at once, Ctoggle unchanged (RM-SL-06)
+                        Req_v    := not Link_ActiveBus;
+                        EndSw_v  := true;
+                        WaitLk_v := true;
+                    elsif Due_v and PreOp_v and C_v /= 0 and Ct_v < N_v then
+                        -- Toggle: the other bus, Ctoggle + 1, timer restart; only in Pre-operational and with C /= 0
+                        -- (RM-SL-03, RM-SL-04, RM-SL-09, RM-HB-03)
+                        Req_v     := not Req_v;
+                        Ct_v      := Ct_v + 1;
+                        Due_v     := false;
+                        EndRep_v  := false;
+                        WaitLk_v  := true;
+                        Restart_v := true;
                     elsif Due_v and Ct_v >= N_v then
+                        -- Ctoggle has reached Ntoggle: no toggle, one event, the process keeps running (RM-SL-04)
                         Due_v := false;
-                        if not Exh_v then
-                            Ev_v(4) := '1';
-                            Exh_v   := true;
+                        if not EndRep_v then
+                            Ev_v(4)  := '1';
+                            EndRep_v := true;
                         end if;
-                    elsif Exp_v then
+                    elsif Expire_v then
                         Due_v := true;
                     end if;
-                when MSwitch =>
-                    if Link_Switching = '0' and Link_ActiveBus = Req_v then
-                        Ev_v(1) := '1';
-                        if EndAf_v then
-                            Ev_v(2) := '1';
-                            UpdB_v  := Req_v;
-                            EndAf_v := false;
-                            St_v    := MMonitor;
-                            Rs_v    := true;
-                        else
-                            St_v := MSelect;
-                        end if;
-                    elsif Msg_v(R_v) = '1' then
-                        EndAf_v := true;
-                    elsif Exp_v then
-                        Due_v := true;
+                    -- A toggle that waits for Pre-operational: Pre-operational again at every expiry while the node is
+                    -- Operational or Stopped (RM-SL-03)
+                    if Phase_v = Selection and not WaitLk_v and Expire_v and Due_v and OpSt_v then
+                        Ev_v(0) := '1';
                     end if;
+
             end case;
 
-            if Rs_v or ParChg_v or HbRst_v then
-                Rem_v := T_v * C_v;
+            if Restart_v or ParChg_v or HbRst_v then
+                Elap_v := 0;
             end if;
+            -- Write of Ctoggle, also in the cycle of a toggle (RM-SL-10)
             if Cfg_CtoggleWr = '1' then
                 Ct_v := to_integer(unsigned(Cfg_Ctoggle));
             end if;
@@ -504,7 +565,7 @@ begin
         end if;
 
         ExpLinkBus <= Req_v;
-        if St_v = MSelect or St_v = MSwitch then
+        if Phase_v = Selection then
             ExpSel <= '1';
         else
             ExpSel <= '0';
@@ -706,17 +767,38 @@ begin
         end procedure;
 
         procedure afterTick (k : natural) is
+            variable N_v : natural := 0;
         begin
-            wait until rising_edge(Clk) and Tick_Ms = '1';
+
+            loop
+                wait until rising_edge(Clk);
+                exit when Tick_Ms = '1';
+                N_v := N_v + 1;
+                if N_v > 2 * TickPer + 10 then
+                    alert(ERROR, "timeout: tick");
+                    exit;
+                end if;
+            end loop;
+
             clocks(k);
         end procedure;
 
-        variable C0_v  : natural;
-        variable K_v   : natural;
-        variable TC_v  : natural;
-        variable B_v   : natural;
-        variable Bd_v  : std_logic;
-        variable Rnd_v : natural;
+        -- Waits until the link reports a switch (Link_Switching = '1'), at most 1 ms
+        procedure waitSwitching is
+        begin
+            if Link_Switching /= '1' then
+                wait until Link_Switching = '1' for 1 ms;
+            end if;
+            check_value(Link_Switching, '1', ERROR, "timeout: switch of the link");
+        end procedure;
+
+        variable C0_v   : natural;
+        variable K_v    : natural;
+        variable TC_v   : natural;
+        variable B_v    : natural;
+        variable Bd_v   : std_logic;
+        variable Rnd_v  : natural;
+        variable Dens_v : natural;
     begin
 
         test_runner_setup(runner, runner_cfg);
@@ -727,6 +809,7 @@ begin
             CheckEn       <= false;
             TickPer       <= 4;
             NmtDly        <= 1;
+            NmtIgnore     <= false;
             SwDly         <= 3;
             Cfg_HbTime    <= u16(5);
             Cfg_Ttoggle   <= u8(2);
@@ -764,7 +847,13 @@ begin
                         check_value(Stat_Selecting, '0', ERROR, "minimal set: no start-up process");
                         waitCnt(CntMiss, N_v + 1, 10 * 4 + 20, "minimal set: monitoring after the Initialisation");
                     else
-                        NmtTarget <= NmtPreOp_c;
+                        -- A write of Ctoggle before the start has no effect on the process (RM-SL-10)
+                        wait until rising_edge(Clk);
+                        Cfg_Ctoggle   <= u8(3);
+                        Cfg_CtoggleWr <= '1';
+                        wait until rising_edge(Clk);
+                        Cfg_CtoggleWr <= '0';
+                        NmtTarget     <= NmtPreOp_c;
                         clocks(3);
                         check_value(Stat_Selecting, '1', ERROR, "start-up process in Pre-operational");
                         check_value(Stat_Ctoggle, u8(0), ERROR, "Ctoggle 0 at the start");
@@ -1095,16 +1184,17 @@ begin
                             check_value(Stat_Ctoggle, u8(K_v), ERROR, "Ctoggle unchanged");
                         when 1 =>
                             -- In the cycle after a toggle: a message on the requested bus
-                            wait until Link_Bus /= Link_ActiveBus;
+                            wait until Link_Bus /= Link_ActiveBus for 1 ms;
+                            check_value(Link_Bus /= Link_ActiveBus, true, ERROR, "timeout: toggle");
                             nmt(1 - B_v);
                         when 2 =>
                             -- During a switch: a message on the requested bus
-                            wait until Link_Switching = '1';
+                            waitSwitching;
                             clocks(5);
                             hb(1 - B_v);
                         when 3 =>
                             -- During a switch: a message on the bus left: no effect
-                            wait until Link_Switching = '1';
+                            waitSwitching;
                             clocks(5);
                             hb(B_v);
                         when others =>
@@ -1203,7 +1293,8 @@ begin
                 toMonitor;
                 NmtTarget     <= NmtOp_c;
                 waitCnt(CntMiss, CntMiss + 1, 300, "missing heartbeat");
-                wait until Nmt_State = NmtPreOp_c;
+                wait until Nmt_State = NmtPreOp_c for 1 ms;
+                check_value(Nmt_State, NmtPreOp_c, ERROR, "timeout: Pre-operational");
                 Cfg_Ctoggle   <= u8(9);
                 Cfg_CtoggleWr <= '1';
                 wait until rising_edge(Clk);
@@ -1250,30 +1341,62 @@ begin
 
             -- *** TC-RM-14: events in every cycle ***
             elsif run("test_events_every_cycle") then
-                Cfg_Ntoggle <= u8(255);
                 toMonitor;
 
-                for I in 1 to 5000 loop
-                    wait until rising_edge(Clk);
-                    Rnd_v       := random(0, 63);
-                    Rx_HbValid  <= std_logic_vector(to_unsigned(Rnd_v mod 4, 2));
-                    Rx_NmtValid <= std_logic_vector(to_unsigned((Rnd_v / 4) mod 4, 2)) and
-                                   std_logic_vector(to_unsigned(Rnd_v / 16, 2));
-                    Rx_HbDlc    <= std_logic_vector(to_unsigned(random(0, 2), 4)) &
-                                   std_logic_vector(to_unsigned(random(0, 2), 4));
-                    Rx_HbState  <= u8(random(0, 255)) & u8(random(0, 255));
-                    if Rnd_v mod 3 = 0 then
+                for Seg in 1 to 60 loop
+                    -- Per segment: random delays of the models, tick period, parameters and NMT state
+                    TickPer     <= random(2, 8);
+                    NmtDly      <= random(0, 20);
+                    SwDly       <= random(1, 50);
+                    Cfg_HbTime  <= u16(random(0, 4));
+                    Cfg_Ttoggle <= u8(random(0, 2));
+                    if random(0, 3) = 0 then
+                        Cfg_Ntoggle <= u8(255);
+                    else
+                        Cfg_Ntoggle <= u8(random(0, 4));
+                    end if;
+                    Cfg_Bdefault <= std_logic'val(std_logic'pos('0') + random(0, 1));
+
+                    case random(0, 5) is
+                        when 0 =>
+                            NmtTarget <= NmtInit_c;
+                        when 1 =>
+                            NmtTarget <= NmtOp_c;
+                        when 2 =>
+                            NmtTarget <= NmtStopped_c;
+                        when others =>
+                            NmtTarget <= NmtPreOp_c;
+                    end case;
+
+                    -- Events of both buses with a random density, from none (timer expiries) to every cycle
+                    Dens_v := random(0, 3);
+
+                    for I in 1 to 400 loop
+                        wait until rising_edge(Clk);
                         Rx_HbValid  <= "00";
                         Rx_NmtValid <= "00";
-                    end if;
-                    if I mod 700 = 0 then
-                        NmtTarget <= NmtOp_c;
-                    end if;
+                        if Dens_v > 0 and random(1, 3) <= Dens_v then
+                            Rnd_v       := random(0, 63);
+                            Rx_HbValid  <= std_logic_vector(to_unsigned(Rnd_v mod 4, 2));
+                            Rx_NmtValid <= std_logic_vector(to_unsigned((Rnd_v / 4) mod 4, 2)) and
+                                           std_logic_vector(to_unsigned(Rnd_v / 16, 2));
+                            Rx_HbDlc    <= std_logic_vector(to_unsigned(random(0, 2), 4)) &
+                                           std_logic_vector(to_unsigned(random(0, 2), 4));
+                            Rx_HbState  <= u8(random(0, 255)) & u8(random(0, 255));
+                        end if;
+                        Cfg_CtoggleWr <= '0';
+                        if random(0, 99) = 0 then
+                            Cfg_Ctoggle   <= u8(random(0, 5));
+                            Cfg_CtoggleWr <= '1';
+                        end if;
+                    end loop;
+
                 end loop;
 
                 wait until rising_edge(Clk);
-                Rx_HbValid  <= "00";
-                Rx_NmtValid <= "00";
+                Rx_HbValid    <= "00";
+                Rx_NmtValid   <= "00";
+                Cfg_CtoggleWr <= '0';
                 clocks(100);
 
             -- *** TC-RM-15: minimal set ***
@@ -1334,7 +1457,7 @@ begin
                 for K in 0 to 1 loop
                     toSelect;
                     if K = 1 then
-                        wait until Link_Switching = '1';
+                        waitSwitching;
                     end if;
                     doReset;
                     clocks(SwDly + 6);
@@ -1353,6 +1476,134 @@ begin
                 Cfg_HbTime <= u16(3);
                 C0_v       := CntSw;
                 waitCnt(CntSw, C0_v + 1, 2 * 2 * 3 * 4 + 20, "toggling after C changed from 0");
+
+            -- *** TC-RM-20: a due toggle while the node is Operational or Stopped ***
+            elsif run("test_preop_again") then
+
+                for K in 0 to 2 loop
+                    NmtDly    <= 1;
+                    NmtIgnore <= false;
+                    SwDly     <= 3;
+                    if K = 2 then
+                        SwDly <= 20;
+                    end if;
+                    toSelect;
+                    if K = 2 then
+                        -- The node enters Operational during the first switch, while the link still reports the old
+                        -- bus (an NMT message of the old bus delivered during the switch)
+                        waitSwitching;
+                        clocks(5);
+                        NmtIgnore <= true;
+                        NmtTarget <= NmtStopped_c;
+                        clocks(1);
+                        NmtTarget <= NmtOp_c;
+                    end if;
+                    waitCnt(CntSw, CntSw + 1, 200, "first toggle");
+                    -- The node leaves Pre-operational during the process and does not answer the requests
+                    NmtIgnore <= true;
+                    if K = 2 then
+                        null;
+                    elsif MinimalSet_g then
+                        -- Minimal set: a reset communication leads through the Initialisation to Operational
+                        NmtTarget <= NmtInit_c;
+                        clocks(3);
+                        NmtTarget <= NmtOp_c;
+                    elsif K = 0 then
+                        NmtTarget <= NmtStopped_c;
+                    else
+                        NmtTarget <= NmtStopped_c;
+                        clocks(1);
+                        NmtTarget <= NmtOp_c;
+                    end if;
+                    C0_v := CntPreop;
+                    N_v  := CntSw;
+                    -- Pre-operational is requested again at every expiry, T x C = 10 ticks apart (RM-SL-03)
+                    waitCnt(CntPreop, C0_v + 1, 10 * 4 + 20, "Pre-operational requested again");
+                    K_v := CycReq;
+                    waitCnt(CntPreop, C0_v + 2, 10 * 4 + 20, "Pre-operational requested at the next expiry");
+                    check_value(CycReq - K_v, 10 * 4, ERROR, "requests T x C ticks apart");
+                    check_value(CntSw, N_v, ERROR, "no toggle outside Pre-operational");
+                    -- The node answers the next request: the waiting toggle follows
+                    NmtIgnore <= false;
+                    waitCnt(CntSw, N_v + 1, 2 * 10 * 4 + 40, "the waiting toggle after Pre-operational");
+                end loop;
+
+            -- *** TC-RM-21: the Initialisation ends in Operational or Stopped (full set) ***
+            elsif run("test_start_operational") then
+
+                for K in 0 to 1 loop
+                    if K = 0 then
+                        NmtTarget <= NmtOp_c;
+                    else
+                        NmtTarget <= NmtStopped_c;
+                    end if;
+                    doReset;
+                    clocks(10);
+                    check_value(Stat_Selecting, '0', ERROR, "no start-up process outside Pre-operational");
+                    C0_v := CntMiss;
+                    waitCnt(CntMiss, C0_v + 1, 10 * 4 + 20, "monitoring after the Initialisation");
+                    waitFor(Stat_Selecting, '1', 10, "bus selection process after the missing heartbeat");
+                end loop;
+
+            -- *** TC-RM-22: the consumer heartbeat time lowered while the presence runs ***
+            elsif run("test_presence_lower_c") then
+                Cfg_HbTime <= u16(10);
+                toMonitor;
+                B_v        := act;
+                hb(B_v);
+                clocks(6 * 4);
+                check_value(Stat_HbPresent(B_v), '1', ERROR, "presence 6 ticks after the heartbeat");
+                Cfg_HbTime <= u16(3);
+                clocks(4 + 2);
+                check_value(Stat_HbPresent(B_v), '0', ERROR, "presence cleared at the next tick after C = 3");
+
+            -- *** TC-RM-23: a second process without a reset ***
+            elsif run("test_second_process") then
+                Cfg_Ntoggle <= u8(2);
+                -- First process: two toggles and the end of the toggling
+                toSelect;
+                waitCnt(CntEnd, CntEnd + 1, 500, "end of the toggling of the first process");
+                check_value(Stat_Ctoggle, u8(2), ERROR, "two toggles in the first process");
+                C0_v := CntUpd;
+                nmt(act);
+                waitCnt(CntUpd, C0_v + 1, 10, "end of the first process");
+                -- A write of Ctoggle outside a process has no effect on the next one (RM-SL-10)
+                wait until rising_edge(Clk);
+                Cfg_Ctoggle   <= u8(7);
+                Cfg_CtoggleWr <= '1';
+                wait until rising_edge(Clk);
+                Cfg_CtoggleWr <= '0';
+                -- The node in Operational, so that the first toggle waits for Pre-operational
+                NmtDly    <= 20;
+                NmtTarget <= NmtStopped_c;
+                clocks(1);
+                NmtTarget <= NmtOp_c;
+                -- Second process: Ctoggle 0, the first toggle due at once, the end reported again (RM-SL-02, RM-SL-04)
+                C0_v := CntMiss;
+                N_v  := CntSw;
+                K_v  := CntEnd;
+                waitCnt(CntMiss, C0_v + 1, 10 * 4 + 20, "second missing heartbeat");
+                wait until falling_edge(Clk);
+                check_value(Stat_Ctoggle, u8(0), ERROR, "Ctoggle 0 at the start of the second process");
+                waitCnt(CntSw, N_v + 1, 20 + 20, "first toggle of the second process after Pre-operational");
+                waitCnt(CntEnd, K_v + 1, 500, "end of the toggling of the second process");
+                check_value(CntSw - N_v, 2, ERROR, "two toggles in the second process");
+
+            -- *** TC-RM-24: a due toggle and C = 0 ***
+            elsif run("test_toggle_c0") then
+                NmtDly <= 50;
+                toSelect;
+                -- C = 0 before the node enters Pre-operational: the due toggle is not made (RM-HB-03)
+                Cfg_HbTime <= u16(0);
+                N_v        := CntSw;
+                Bd_v       := Link_Bus;
+                clocks(80);
+                check_value(Nmt_State, NmtPreOp_c, ERROR, "Pre-operational");
+                check_value(CntSw, N_v, ERROR, "no toggle with C = 0");
+                check_value(Link_Bus, Bd_v, ERROR, "the node stays on its bus");
+                -- C /= 0 again: the due toggle is made
+                Cfg_HbTime <= u16(5);
+                waitCnt(CntSw, N_v + 1, 20, "the due toggle with C /= 0");
 
             end if;
 

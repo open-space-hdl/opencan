@@ -38,6 +38,9 @@ entity ocan_redundancy_net_th is
         Cfg_CobId      : in    std_logic_vector(143 downto 0);
         ForceDom       : in    std_logic_vector(1 downto 0);
         ForceRec       : in    std_logic_vector(1 downto 0);
+        -- An NMT message injected at the input of ocan_nmt (an NMT message of the old bus during a switch)
+        Inj_NmtValid   : in    std_logic                    := '0';
+        Inj_NmtCs      : in    std_logic_vector(7 downto 0) := (others => '0');
         -- Observed
         Stat_State     : out   std_logic_vector(1 downto 0);
         Ena_Pdo        : out   std_logic;
@@ -46,7 +49,8 @@ entity ocan_redundancy_net_th is
         Upd_Valid      : out   std_logic;
         Upd_Bdefault   : out   std_logic;
         Err_ToggleEnd  : out   std_logic;
-        Nmt_Switched   : out   std_logic
+        Nmt_Switched   : out   std_logic;
+        Link_Switching : out   std_logic
     );
 end entity;
 
@@ -77,6 +81,8 @@ architecture sim of ocan_redundancy_net_th is
     signal NmtState   : std_logic_vector(1 downto 0);
     signal NmtValid   : std_logic;
     signal NmtCs      : std_logic_vector(7 downto 0);
+    signal NmtValidIn : std_logic;
+    signal NmtCsIn    : std_logic_vector(7 downto 0);
     signal TxValid    : std_logic;
     signal TxReady    : std_logic;
     signal TxData     : std_logic_vector(7 downto 0);
@@ -134,6 +140,9 @@ begin
     Stat_ActiveBus <= ActBus;
     Stat_Selecting <= Selecting;
     Nmt_Switched   <= Switched;
+    Link_Switching <= LkSwitch;
+    NmtValidIn     <= NmtValid or Inj_NmtValid;
+    NmtCsIn        <= Inj_NmtCs when Inj_NmtValid = '1' else NmtCs;
 
     i_tick : entity olo.olo_base_strobe_gen
         generic map (
@@ -185,8 +194,8 @@ begin
             Pin_NodeIdCode => PinCode,
             Tick_Ms        => Tick,
             Cfg_HbTime     => NmtHbTime,
-            Rx_Valid       => NmtValid,
-            Rx_Cs          => NmtCs,
+            Rx_Valid       => NmtValidIn,
+            Rx_Cs          => NmtCsIn,
             Tx_Valid       => TxValid,
             Tx_Ready       => TxReady,
             Tx_Data        => TxData,

@@ -86,6 +86,9 @@ architecture sim of ocan_redundancy_net_tb is
     signal Upd_Bdefault   : std_logic;
     signal Err_ToggleEnd  : std_logic;
     signal Nmt_Switched   : std_logic;
+    signal Link_Switching : std_logic;
+    signal Inj_NmtValid   : std_logic                      := '0';
+    signal Inj_NmtCs      : std_logic_vector(7 downto 0)   := (others => '0');
 
     -- Redundancy Master model: heartbeat (state Operational) every HbPeriod on bus MasterBus while MasterOn
     signal MasterOn  : boolean := false;
@@ -125,7 +128,10 @@ begin
             Upd_Valid      => Upd_Valid,
             Upd_Bdefault   => Upd_Bdefault,
             Err_ToggleEnd  => Err_ToggleEnd,
-            Nmt_Switched   => Nmt_Switched
+            Nmt_Switched   => Nmt_Switched,
+            Link_Switching => Link_Switching,
+            Inj_NmtValid   => Inj_NmtValid,
+            Inj_NmtCs      => Inj_NmtCs
         );
 
     p_master : process is
@@ -272,6 +278,36 @@ begin
                     MasterOn <= false;
                     wait for 2 ms;
                 end loop;
+
+            -- *** TC-RM-25: an NMT Start of the old bus during the switch (selective bus access) ***
+            elsif run("test_net_nmt_race") then
+                check_value(Parallel_g, false, ERROR, "test_net_nmt_race runs with selective bus access");
+                MasterBus <= 0;
+                MasterOn  <= true;
+                startNode;
+                waitSig(Stat_Selecting, '1', 2 ms, "start-up bus selection");
+                waitSig(Stat_Selecting, '0', 10 ms, "start-up bus selection ended by the master heartbeat");
+                -- The master heartbeat is missing: the first toggle to bus B
+                MasterOn <= false;
+                wait until Link_Switching = '1' for 12 ms;
+                check_value(Link_Switching, '1', ERROR, "first switch after the missing heartbeat");
+                check_value(Stat_Selecting, '1', ERROR, "bus selection process");
+                -- An NMT Start remote node of bus A delivered during the switch: injected at the input of ocan_nmt,
+                -- since its window on the bus is a few clock cycles (the abort of a pending frame is immediate)
+                Inj_NmtCs    <= x"01";
+                Inj_NmtValid <= '1';
+                wait until rising_edge(Clk);
+                check_value(Link_Switching, '1', ERROR, "the NMT message is taken during the switch");
+                Inj_NmtValid <= '0';
+                waitSig(Stat_ActiveBus, '1', 1 ms, "bus B active");
+                wait for 100 us;
+                check_value(Stat_State, NmtOp_c, ERROR, "Operational on bus B during the bus selection process");
+                check_value(Stat_Selecting, '1', ERROR, "the process runs on bus B");
+                -- The master is back on bus A. Pre-operational again at the next expiry, the toggle back to bus A,
+                -- where the master heartbeat ends the process (RM-SL-03, RM-SL-05)
+                MasterOn <= true;
+                waitSig(Stat_ActiveBus, '0', 10 ms, "toggle back to bus A");
+                waitSig(Stat_Selecting, '0', 3 ms, "the process ends on bus A");
 
             -- *** TC-RM-19: broken and stuck buses ***
             elsif run("test_net_bus_faults") then
