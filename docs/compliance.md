@@ -27,7 +27,8 @@ verification plan are marked as planned.
 | 6.3 | Synchronisation object | `ocan_pdo` | DS-IF-04, DS-RX-01, DS-RX-04 | TC-DS-01, TC-DS-14 | Planned |
 | 6.4 | Emergency object | Not implemented (D9, optional object) | - | - | Not implemented |
 | 6.5.1 | Module control services | `ocan_nmt` | NM-IF-02, NM-IF-07, NM-MS-01, NM-SM-02, NM-SM-06, NM-SM-07 | - | Planned |
-| 6.5.2 | Error control services, heartbeat | `ocan_nmt` | DS-IF-06, DS-TX-06, NM-HB-02, NM-HB-03, NM-HB-04, NM-HB-06, NM-IF-04, NM-MS-02 | TC-DS-08, TC-DS-09, TC-DS-12 | Planned |
+| 6.5.2a | Error control services, heartbeat production | `ocan_nmt` | DS-IF-06, DS-TX-06, NM-HB-02, NM-HB-03, NM-HB-04, NM-HB-06, NM-IF-04, NM-MS-02 | TC-DS-08, TC-DS-09, TC-DS-12 | Planned |
+| 6.5.2b | Error control services, consumption of the master heartbeat | `ocan_redundancy` | - | - | Planned |
 | 6.5.3 | Bootup service | `ocan_nmt` | NM-HB-01, NM-HB-06, NM-IF-04 | - | Planned |
 | 6.5.4 | Node state diagram | `ocan_nmt` | NM-SM-01, NM-SM-02, NM-SM-04 | - | Planned |
 | 6.6 | Electronic data sheets | Out of scope, device | - | - | Out of scope |
@@ -52,13 +53,13 @@ verification plan are marked as planned.
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | - | - | Planned |
 | 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | NM-MS-01, NM-MS-02, NM-MS-03 | - | Planned |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | - | - | Planned |
-| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03, NM-SM-03 | TC-DS-02, TC-DS-08 | Planned |
+| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03 | TC-DS-02, TC-DS-08 | Planned |
 | 9.4.10 | Minimal set authorized objects | `ocan_od` | - | - | Planned |
 | 9.5 | Free COB-ID | `ocan_dispatch` | DS-TX-05 | TC-DS-02, TC-DS-11 | Verified |
 | 10.1 to 10.5 | Connectors and pin assignments | Out of scope, board | - | - | Out of scope |
 | 11.1 | CANopen applicability matrix | `ocan_core` | DS-RX-02, NM-IF-07, NM-SM-06 | TC-DS-02 | Planned |
 
-Clauses: 43; not implemented: 2; out of scope: 8; planned: 27; verified: 6.
+Clauses: 44; not implemented: 2; out of scope: 8; planned: 28; verified: 6.
 
 ## 2. Requirements
 

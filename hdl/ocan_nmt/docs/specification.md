@@ -46,10 +46,10 @@ of the tables names the section of \[CiA301\] that defines the service or protoc
 | --- | --- | --- | --- |
 | NM-SM-01 | After a hardware reset the node shall pass the sub-states initialising, reset application and reset communication of the Initialisation state and then enter Pre-operational. The transition to Pre-operational is the request of the boot-up message (NM-HB-01). | 7.3.2.1, 7.3.2.2.1 | 6.5.4a, 8.3.2a |
 | NM-SM-02 | In the states Pre-operational, Operational and Stopped the node control services shall change the state as follows, also when the node is already in the target state: command specifier 1 (start remote node) to Operational, 2 (stop remote node) to Stopped, 128 (enter pre-operational) to Pre-operational, 129 (reset node) to the reset application sub-state, 130 (reset communication) to the reset communication sub-state. | 7.2.8.2.1, 7.2.8.3.1, 7.3.2.1 | 6.5.1a, 6.5.4a |
-| NM-SM-03 | An NMT message with another command specifier shall not change the state and shall be reported as an error event. An NMT message in the Initialisation state shall not change the state. | 7.3.2.3 | 9.4.8a |
+| NM-SM-03 | An NMT message with another command specifier shall not change the state and shall be reported as an error event. An NMT message in the Initialisation state shall not change the state. | 7.3.2.3 | none |
 | NM-SM-04 | The service enables shall follow the state: SDO and SYNC in Pre-operational and Operational, PDO in Operational only, none in Stopped and in Initialisation. From the request of the boot-up message until its completion (sent or aborted) every enable shall stay cleared, so that the boot-up message is the first frame of the node. | 7.3.2.2.2 to 7.3.2.2.5 | 6.5.4a, 8.3.3e |
 | NM-SM-05 | A request of `ocan_redundancy` to enter Pre-operational shall change Operational and Stopped to Pre-operational; it shall have no effect in Pre-operational and in Initialisation. When the request and an NMT message come in the same clock cycle, a start, stop or enter pre-operational command shall be executed first and the request after it; a reset command shall be executed and the request discarded. | 7.3.2.3 | 8.3.3e |
-| NM-SM-06 | The reset application event shall be issued at the start of the reset application sub-state: the user logic resets the application of the device, `ocan_od` sets the manufacturer-specific and the device profile area to their power-on values. The reset communication event shall be issued at the start of the reset communication sub-state: the protocol blocks reset their state, `ocan_od` sets the communication profile area to its power-on values. A reset node passes both sub-states and issues both events. | 7.2.8.2.1.5, 7.2.8.2.1.6, 7.3.2.2.1 | 6.5.1a, 11.1 |
+| NM-SM-06 | The NMT block shall issue the reset application event at the start of the reset application sub-state and the reset communication event at the start of the reset communication sub-state. A reset node and a hardware reset pass both sub-states and issue both events, a reset communication issues the second only. The blocks of the core respond to the events and to the hardware reset as section 2.6 states. | 7.2.8.2.1.5, 7.2.8.2.1.6, 7.3.2.2.1 | 6.5.1a, 11.1 |
 | NM-SM-07 | The NMT block shall take an NMT message in every clock cycle, also in consecutive cycles, and complete the change of state, of the service enables and of the transmit request of each message within the minimum frame time of 46 bit times at 1 Mbit/s (D11). | none | 6.5.1a |
 
 ### 2.4 Boot-up and heartbeat (NM-3)
@@ -72,6 +72,31 @@ of the tables names the section of \[CiA301\] that defines the service or protoc
 | NM-MS-02 | With `MinimalSet_g` = true the node shall send no boot-up message. At the end of the Initialisation it shall enter Operational by local control and request a heartbeat at once; further heartbeats follow NM-HB-03. | 7.3.2.2.2, 7.2.8.3.2.2 | 9.4.9.2a, 6.5.2a |
 | NM-MS-03 | With `MinimalSet_g` = true a request of `ocan_redundancy` shall change Operational to Pre-operational (NM-SM-05), and the end of the bus selection process with an active bus shall return the node to Operational by local control. | 7.3.2.2.2 | 8.3.3e, 8.3.3k, 9.4.6.1a |
 
+### 2.6 Effect of the resets
+
+What the hardware reset (`Rst` of the core) and the two NMT resets change in each block. Reset node passes the reset
+application and the reset communication sub-state; the entries of reset communication apply to it as well. The
+entries of blocks that are specified later (`ocan_od`, `ocan_sdo`, `ocan_pdo`) are the intended effects, which their
+specifications take over.
+
+| Block | Hardware reset | Reset node | Reset communication |
+| --- | --- | --- | --- |
+| `ocan_link` | Both controllers restart, error counters 0, on the bus that `ocan_redundancy` requests | No change | No change |
+| `ocan_dispatch` | No held NMT message, no pending frame | No change; the COB-IDs follow `ocan_od` | No change; the COB-IDs follow `ocan_od` |
+| `ocan_nmt` | Initialisation from the initialising sub-state (NM-SM-01) | Reset application and reset communication sub-states: new NODE-ID sample, boot-up message, new heartbeat cycle | Reset communication sub-state: new NODE-ID sample, boot-up message, new heartbeat cycle |
+| `ocan_redundancy` | Requested bus Bdefault, start-up bus selection (RM-SL-01) | No change of the active bus, Ctoggle and the bus selection process (RM-SL-08) | As reset node |
+| `ocan_od` | Every object to its power-on value | Manufacturer-specific and device profile areas, then the communication profile area, to their power-on values; object 2000h is kept | Communication profile area (1000h to 1FFFh) to its power-on values |
+| `ocan_sdo` | No transfer in progress | A transfer in progress ends without a reply | As reset node |
+| `ocan_pdo` | No pending request, SYNC counts cleared | SYNC counts, synchronous receive data not yet applied and pending transmit requests cleared; the data last passed to the user logic are kept | As reset node |
+| `ocan_time` | Local time 0, set flag cleared, no SYNC sample (TM-CT-04) | SYNC count of the Local Time PDO and a pending Local Time PDO cleared; the local time and the SYNC sample are kept (TM-CT-04) | As reset node |
+
+NOTE: The applicability matrix of clause 11 states for reset node that the whole device connected with the CAN
+controller is reset. The core passes this reset to the user logic as the reset application event; the user logic
+resets the application of the device. `ocan_od` takes both events and restores the areas of the table (\[CiA301\]
+section 7.3.2.2.1). Object 2000h (Bdefault, Ttoggle, Ntoggle, Ctoggle) lies in the manufacturer-specific area but
+keeps its value at both NMT resets, so that the node keeps its bus and its toggle count (specification of
+`ocan_redundancy`, section 5).
+
 ## 3. Error conditions
 
 | Condition | Detection | Response |
@@ -81,8 +106,10 @@ of the tables names the section of \[CiA301\] that defines the service or protoc
 | NMT message with an unknown command specifier | NM-2 | No state change; error event |
 | Request of `ocan_redundancy` together with an NMT message | NM-2 | NMT command first, then the request; a reset command discards the request |
 | Boot-up message aborted | NM-3 | Requested again after the next bus switch |
+| Boot-up message not acknowledged (no other node on the bus, broken bus) | NM-3 | The link repeats the frame; the request stays pending, the service enables stay cleared and no heartbeat is requested. With the master heartbeat monitoring and the toggling enabled, the bus switch aborts the request and the boot-up message is sent on the other bus (NM-HB-07). With a consumer heartbeat time of 0 or Ntoggle = 0 there is no bus switch: the request completes when a node acknowledges the frame |
 | Heartbeat aborted | NM-3 | Not repeated; the cycle continues |
 | Producer heartbeat time 0 | NM-3 | No heartbeat; the integrator configures a nonzero value (clause 6.5.2a) |
+| Node guarding request (remote frame with the identifier 700h + NODE-ID) | `ocan_dispatch` (DS-RX-02) | Discarded, no reply: node guarding is not supported (section 5) |
 
 ## 4. Configuration parameters
 
@@ -99,10 +126,12 @@ dictionary.
 | --- | --- |
 | 6.10e, 6.10g, 6.10j | The NODE-ID is hard-coded by pins, for example straps in a connector (note of clause 6.10j). The maintenance mode of clause 6.10g is a change of the straps followed by a reset: the pins are read only in the reset communication sub-state, so a valid NODE-ID cannot change in operation |
 | 6.10f, 6.10k | The protection code is the complement of the NODE-ID (D8). A single faulty pin or a single upset of the held copies gives an invalid NODE-ID, never a different valid one. An invalid sample keeps the node silent; the node joins the network once the pins carry a valid code, without a reset |
-| 6.5.1a, 11.1 | The applicability matrix states that a reset node resets the whole device connected with the CAN controller. The reset application event passes this reset to the user logic |
+| 6.5.1a, 11.1 | The applicability matrix states that a reset node resets the whole device connected with the CAN controller. The reset application event passes this reset to the user logic (section 2.6) |
+| 6.5.2 note, 11.1 | Clause 6.5.2 makes the heartbeat the only error control protocol, and the applicability matrix marks the node guarding protocol (\[CiA301\] section 7.2.8.3.2.1) and the life guarding event as not applicable. Node guarding and life guarding are not supported: a guarding request is a remote frame, which `ocan_dispatch` discards (DS-RX-02) |
+| 9.4.8a | The clause defines the handling of a protocol error for the minimal set. The clause 6 slave has no corresponding clause; NM-SM-03 follows \[CiA301\] and traces to no ECSS clause |
 | 6.5.3a, 8.3.2a | The boot-up message is the first frame of the node after the Initialisation (NM-SM-04). It is sent on the default bus; when the bus is not usable and the transmission is aborted at the bus switch, it is sent on the next bus, so that the master learns of the restart on the bus it uses |
 | 8.3.3h | The heartbeat production on the new bus starts with a heartbeat at once after the switch, so that the Redundancy Master sees the node on the new bus without waiting for a heartbeat period |
 | 8.3.3e, 8.3.3f | In the clause 6 slave the node stays in Pre-operational after a bus switch until the Redundancy Master sends start remote node (clause 8.3.3f) |
 | 9.4.6.1a, 9.4.9.2a | The minimal set has no node control services and no boot-up message. The node enters Operational by local control (\[CiA301\] section 7.3.2.2.2). The bus monitoring of clause 8.3.3e still stops the PDOs during a bus selection; as no master command can end it, the node returns to Operational by local control when the bus selection process has found the active bus |
-| 11.1 | The note of the applicability matrix on the NMT startup, a transition to Operational directly after the reset communication, concerns the master, which may start a node right after its boot-up message without configuration (NM-SM-02). The clause 6 slave never enters Operational on its own |
+| 11.1 | The note of the applicability matrix on the NMT startup requires the possibility to go to Operational directly after the reset communication. The note stands next to the start-up sequence of the network (heartbeat, bus monitoring, configuration, SYNC), which is a procedure of the master, and \[CiA301\] section 7.3.2.2.1 lets the slave enter Pre-operational after the reset communication. The note therefore concerns the master, which may start a node with start remote node right after its boot-up message, without the configuration step (NM-SM-02). A slave that entered Operational on its own would send PDOs before the start-up bus selection of clause 8.3.2b has found the bus of the master and without the start command of clause 8.3.3f. The clause 6 slave never enters Operational on its own, and the core has no option for it |
 | \[CiA301\] 7.2.8.3.2.2 | The heartbeat protocol starts as soon as the producer heartbeat time is configured: a change from 0 starts the cycle with a heartbeat at once (NM-HB-04) |

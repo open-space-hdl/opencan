@@ -179,7 +179,9 @@ the active bus](img/ocan_core_overview.drawio.svg)
 
 One clock domain. The bus inputs pass the synchronisers of `olo_intf_can` (`SyncTmr_g`). A synchronous reset
 corresponds to the power-on or hardware reset of clause 8.3.2a: the node restarts on Bdefault. The NMT services Reset
-Node and Reset Communication reset the protocol state as defined by \[CiA301\], not the whole core.
+Node and Reset Communication reset the protocol state as defined by \[CiA301\], not the whole core; the
+effect of each reset on each block is the table in section 2.6 of the
+[ocan_nmt specification](../hdl/ocan_nmt/docs/specification.md).
 
 ### 6.3 Internal interfaces
 
@@ -194,7 +196,7 @@ Node and Reset Communication reset the protocol state as defined by \[CiA301\], 
   request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e), an event at every bus switch and
   the state of the bus selection process; NMT to redundancy: the NMT state.
 - NMT to dispatch: the protected NODE-ID with its valid flag and the service enables; NMT to all blocks: the events
-  of the reset application and reset communication sub-states.
+  of the reset application and reset communication sub-states (section 6.2).
 - A millisecond tick (`olo_base_strobe_gen`) for the heartbeat producer, the heartbeat consumer and the toggling
   timer.
 
@@ -299,7 +301,8 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | 6.3 | Synchronisation object | `ocan_pdo` | `ocan_time` | Unit |
 | 6.4 | Emergency object | Not implemented (D9, optional object) | - | - |
 | 6.5.1 | Module control services | `ocan_nmt` | - | Unit |
-| 6.5.2 | Error control services, heartbeat | `ocan_nmt` | `ocan_redundancy` | Unit |
+| 6.5.2a | Error control services, heartbeat production | `ocan_nmt` | `ocan_dispatch` | Unit |
+| 6.5.2b | Error control services, consumption of the master heartbeat | `ocan_redundancy` | `ocan_dispatch` | Unit |
 | 6.5.3 | Bootup service | `ocan_nmt` | - | Unit |
 | 6.5.4 | Node state diagram | `ocan_nmt` | - | Unit |
 | 6.6 | Electronic data sheets | Out of scope, device | `ocan_od` | - |
