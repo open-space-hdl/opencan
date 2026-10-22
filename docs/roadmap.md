@@ -18,7 +18,7 @@ The core is in development and has no technology readiness level yet. The
 | Phase | Content | State |
 | --- | --- | --- |
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
-| b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | In work |
+| b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done |
 | c | CANopen services and time distribution | In work |
 | d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | Open |
 
@@ -33,8 +33,8 @@ all modules, with and without code coverage, for the first release.
 | Module | Phase | Function | GHDL regression | Deliberate faults |
 | --- | --- | --- | --- | --- |
 | `ocan_pkg` | b | Definitions that several modules share | 1 of 1 runs pass | - |
-| `ocan_link` | b | Access to the nominal and the redundant bus, bus switch, dominant monitor | 30 of 30 runs pass | 12, all detected |
-| `ocan_dispatch` | b | Receive filter by COB-ID, bus gate, transmit arbitration | 24 of 24 runs pass | 17, all detected |
+| `ocan_link` | b | Access to the nominal and the redundant bus, bus switch, dominant monitor | 32 of 32 runs pass | 18, all detected |
+| `ocan_dispatch` | b | Receive filter by COB-ID, bus gate, transmit arbitration | 27 of 27 runs pass | 23, all detected |
 | `ocan_nmt` | b | NMT slave state machine, boot-up, heartbeat producer, NODE-ID check | 21 of 21 runs pass | 32: 31 detected, 1 by design review |
 | `ocan_redundancy` | b | Bus selection at start-up, master heartbeat consumer, bus toggling, update of Bdefault | 30 of 30 runs pass | 40: 37 detected, 3 by design review |
 | `ocan_time` | c | Local SCET, Spacecraft Time PDO consumer, Local Time PDO producer, sample at SYNC | 122 of 122 runs pass | 33: 32 detected, 1 by design review |

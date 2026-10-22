@@ -34,7 +34,9 @@ Tests observe the ports of `ocan_time`, the buses and the model logs only.
 
 `FineBits_g` changes the structure, so every value from 0 to 24 is simulated. `ClkFrequency_g` is simulated at both
 bounds and at two values between them; the clock period of the bench is derived from the generic, and the reference
-model counts cycles, so a period rounded to the time resolution of the simulator does not affect the checks.
+model counts cycles, so a period rounded to the time resolution of the simulator does not affect the checks. With
+`FineBits_g` = 0 the fine time fields of the RTL and of the bench are null ranges, which VHDL allows; a simulator may
+warn about them.
 
 Checkers that run in every test of the direct bench:
 
