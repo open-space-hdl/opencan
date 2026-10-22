@@ -80,7 +80,10 @@ same `Nmt_NodeId`: the valid flag of entry e is not `NotValid`. Entry 0 (SYNC) i
 has no meaning for a consumer; entry 11 (master heartbeat) is 700h + the NODE-ID of 1016h sub-index 01h of the
 same copy, valid while that NODE-ID is not 0.
 
-No repair: copies that disagree stay until a write or a reset communication (OD-PR-02). A read returns `CobA`.
+No repair: copies that disagree stay until a write or a reset communication (OD-PR-02). A read returns `CobA`:
+bit 31 is `NotValid`, bit 30 is '1' for a transmit PDO (no remote frames) and '0' for a receive PDO, whose reserved
+bit 30 is not stored at a write, bits 29 to 11 are 0 and bits 10 to 0 are the effective identifier. For 1005h bit 31
+is stored as written and read back. `Rel` has an effect for the entries 2 to 9 only.
 
 ### 3.2 Other parameters
 
@@ -112,7 +115,9 @@ selected bits are inverted in the registers, after every other assignment of tha
 | 262 | Bdefault | 541 | as copy A |
 | 263 to 278 | Ttoggle (bits 263 to 270), Ntoggle (bits 271 to 278) | 542 to 557 | as copy A |
 
-The layout is the same for every value of the generics; bits of absent objects have no effect.
+The layout is the same for every value of the generics; bits of absent objects have no effect: the entries of
+absent objects in the COB-ID table are constant 0 in both copies, and the copies of the transmission types of absent
+PDOs are not compared, so that a flip there raises neither `Err_ParamCopy` nor, in `ocan_dispatch`, `Err_CobId`.
 
 ## 4. Outputs and updates (OD-3)
 

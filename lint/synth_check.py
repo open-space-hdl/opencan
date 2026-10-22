@@ -46,6 +46,24 @@ def configs():
         cfg.append(("ocan_time", {"ClkFrequency_g": str(freq)}, None))
     cfg.append(("ocan_time", {"FineBits_g": "0", "ClkFrequency_g": "2147483647"}, None))
     cfg.append(("ocan_time", {"FineBits_g": "0", "ClkFrequency_g": "1000000"}, None))
+    # ocan_od: every value of the structural generics, the bounds of the numeric ones; TC-OD-21 the rejections
+    for minimal in ("false", "true"):
+        for time in ("false", "true"):
+            pdos = "3" if minimal == "true" and time == "true" else "4"
+            cfg.append(("ocan_od", {"MinimalSet_g": minimal, "TimePdos_g": time, "NumRpdo_g": pdos,
+                                    "NumTpdo_g": pdos}, None))
+    for n in (0, 1, 2, 3):
+        cfg.append(("ocan_od", {"NumRpdo_g": str(n), "NumTpdo_g": str(3 - n)}, None))
+    cfg.append(("ocan_od", {"ProducerHbTime_g": "65535", "MasterNodeId_g": "127", "MasterHbTime_g": "0",
+                            "Bdefault_g": "1", "Ttoggle_g": "255", "Ntoggle_g": "0", "RpdoType_g": "255",
+                            "TpdoType_g": "0", "SctCobId_g": "1279", "LtpCobId_g": "1280"}, None))
+    cfg.append(("ocan_od", {"MinimalSet_g": "true", "TimePdos_g": "true", "NumRpdo_g": "4", "NumTpdo_g": "3"},
+                "OD-MS-05"))
+    cfg.append(("ocan_od", {"MinimalSet_g": "true", "TimePdos_g": "true", "NumRpdo_g": "3", "NumTpdo_g": "4"},
+                "OD-MS-05"))
+    cfg.append(("ocan_od", {"SctCobId_g": "1409"}, "SctCobId_g is a restricted or free identifier"))
+    cfg.append(("ocan_od", {"LtpCobId_g": "2047"}, "LtpCobId_g is a restricted or free identifier"))
+    cfg.append(("ocan_od", {"SctCobId_g": "1000", "LtpCobId_g": "1000"}, "SctCobId_g and LtpCobId_g are equal"))
     return cfg
 
 
