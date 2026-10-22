@@ -3,3 +3,4 @@ hdl/ocan_pkg
 hdl/ocan_link
 hdl/ocan_dispatch
 hdl/ocan_nmt
+hdl/ocan_redundancy
