@@ -87,6 +87,7 @@ architecture sim of ocan_dispatch_tb is
     signal LinkTx_Abort       : std_logic;
     signal LinkTx_Done        : std_logic                      := '0';
     signal LinkTx_Aborted     : std_logic                      := '0';
+    signal LinkTx_Stopped     : std_logic                      := '0';
     signal Red_ActiveBus      : std_logic                      := '0';
     signal Red_Selecting      : std_logic                      := '0';
     signal Nmt_NodeId         : std_logic_vector(6 downto 0)   := std_logic_vector(to_unsigned(NodeId_c, 7));
@@ -162,9 +163,11 @@ architecture sim of ocan_dispatch_tb is
     signal CntAbort  : Nat7_a  := (others => 0);
 
     -- *** Link responder ***
-    signal RespReady  : natural := 0;    -- cycles before LinkTx_Ready
-    signal RespDone   : natural := 3;    -- cycles from the acceptance to the completion
+    signal RespBlock  : natural := 0;     -- cycles without LinkTx_Ready from a grant on (a bus switch from the grant)
+    signal RespDone   : natural := 3;     -- cycles from the take to the completion (at least 1)
     signal RespAbort  : boolean := false; -- complete as aborted
+    signal RespDrop   : boolean := false; -- the completion event of the next frame is lost
+    signal RespStop   : boolean := false; -- from the next grant on, the controller of the active bus is stopped
     signal CntAbortRq : natural := 0;     -- LinkTx_Abort pulses
 
 begin
@@ -195,6 +198,7 @@ begin
             LinkTx_Abort       => LinkTx_Abort,
             LinkTx_Done        => LinkTx_Done,
             LinkTx_Aborted     => LinkTx_Aborted,
+            LinkTx_Stopped     => LinkTx_Stopped,
             Red_ActiveBus      => Red_ActiveBus,
             Red_Selecting      => Red_Selecting,
             Nmt_NodeId         => Nmt_NodeId,
@@ -322,11 +326,27 @@ begin
 
     end generate;
 
+    -- Every completion event belongs to a taken request of its source, and a source has at most one taken request
+    -- without its completion (DS-TX-03)
     p_cpl : process (Clk) is
+        variable Out_v : Nat7_a := (others => 0);
     begin
         if rising_edge(Clk) then
 
             for S in 0 to 6 loop
+                if SrcValid(S) = '1' and SrcReady(S) = '1' then
+                    Out_v(S) := Out_v(S) + 1;
+                end if;
+                if SrcDone(S) = '1' or SrcAbort(S) = '1' then
+                    if Out_v(S) = 0 then
+                        alert(ERROR, "completion event of source " & to_string(S) & " without a taken request");
+                    else
+                        Out_v(S) := Out_v(S) - 1;
+                    end if;
+                end if;
+                if Out_v(S) > 1 then
+                    alert(ERROR, "source " & to_string(S) & " granted before the completion of its frame");
+                end if;
                 if SrcDone(S) = '1' then
                     CntDone(S) <= CntDone(S) + 1;
                 end if;
@@ -342,63 +362,104 @@ begin
     end process;
 
     -----------------------------------------------------------------------------------------------
-    -- Link responder: takes one frame at a time and completes it; frames are logged in channel 2
+    -- Link responder, a model of the transmit side of ocan_link (LK-TX-01, LK-TX-02, LK-DT-01, LK-DT-03 and the
+    -- completion invariant, architecture section 5.1): LinkTx_Ready is '1' while no frame is pending and the link is
+    -- neither switching nor stopped; it is '0' from the cycle after the take and '1' again in the cycle of the
+    -- completion event. Frames are logged in channel 2.
     -----------------------------------------------------------------------------------------------
     p_link : process is
         variable F_v       : CanFrame_t;
-        variable Aborted_v : boolean;
+        variable Aborted_v : boolean := false;
         variable Id_v      : natural;
+        variable Busy_v    : boolean := false;
+        variable Cnt_v     : natural := 0;
+        variable Block_v   : natural := 0;
+        variable Stop_v    : boolean := false;
+        variable Grant_v   : boolean;
     begin
-        LinkTx_Ready   <= '0';
+        LinkTx_Ready   <= '1';
         LinkTx_Done    <= '0';
         LinkTx_Aborted <= '0';
+        LinkTx_Stopped <= '0';
 
         loop
             wait until rising_edge(Clk);
-            if LinkTx_Valid = '1' then
+            LinkTx_Done    <= '0';
+            LinkTx_Aborted <= '0';
 
-                for I in 1 to RespReady loop
-                    wait until rising_edge(Clk);
-                    exit when LinkTx_Valid = '0';
-                end loop;
+            -- A grant in the last cycle: a source taken without its completion event
+            Grant_v := false;
 
+            for S in 0 to 6 loop
+                if SrcValid(S) = '1' and SrcReady(S) = '1' and SrcAbort(S) = '0' then
+                    Grant_v := true;
+                end if;
+            end loop;
+
+            -- A bus switch from the grant on (LK-BS-02), and the stop of the controller of the active bus (LK-DT-01)
+            if Grant_v and RespBlock > 0 then
+                Block_v := RespBlock;
+            elsif Block_v > 0 then
+                Block_v := Block_v - 1;
+            end if;
+            if Grant_v and RespStop then
+                Stop_v := true;
+            elsif not RespStop then
+                Stop_v := false;
+            end if;
+
+            if Busy_v then
+                if LinkTx_Abort = '1' then
+                    Aborted_v := true;
+                end if;
+                -- One frame at a time: no new frame before the completion
                 if LinkTx_Valid = '1' then
-                    LinkTx_Ready <= '1';
-                    wait until rising_edge(Clk);
-                    LinkTx_Ready <= '0';
-                    F_v.Ide      := '0';
-                    F_v.Id       := LinkTx_Id;
-                    F_v.Rtr      := '0';
-                    F_v.Dlc      := to_integer(unsigned(LinkTx_Dlc));
-                    F_v.Data     := LinkTx_Data;
-                    DutLog_v.push(2, F_v);
-                    -- No frame with a free COB-ID (DS-TX-05)
-                    Id_v := to_integer(unsigned(LinkTx_Id(28 downto 18)));
-                    if (Id_v >= 16#781# and Id_v <= 16#7DE#) or Id_v >= 16#7F0# then
-                        alert(ERROR, "frame with a free COB-ID " & to_hstring(LinkTx_Id(28 downto 18)));
-                    end if;
-                    Aborted_v := RespAbort;
-
-                    for I in 1 to RespDone loop
-                        wait until rising_edge(Clk);
-                        if LinkTx_Abort = '1' then
-                            Aborted_v := true;
-                        end if;
-                        -- One frame at a time: no new frame before the completion
-                        if LinkTx_Valid = '1' then
-                            alert(ERROR, "frame offered before the completion of the previous one");
-                        end if;
-                    end loop;
-
-                    if Aborted_v then
+                    alert(ERROR, "frame offered before the completion of the previous one");
+                end if;
+                if Stop_v then
+                    -- A stopped controller drops its frame
+                    Cnt_v     := 1;
+                    Aborted_v := true;
+                end if;
+                Cnt_v := Cnt_v - 1;
+                if Cnt_v = 0 then
+                    Busy_v := false;
+                    if RespDrop then
+                        -- Lost completion: LinkTx_Ready again without an event (TC-DS-16)
+                        null;
+                    elsif Aborted_v then
                         LinkTx_Aborted <= '1';
                     else
                         LinkTx_Done <= '1';
                     end if;
-                    wait until rising_edge(Clk);
-                    LinkTx_Done    <= '0';
-                    LinkTx_Aborted <= '0';
                 end if;
+            elsif LinkTx_Valid = '1' and LinkTx_Ready = '1' then
+                -- Take
+                F_v.Ide  := '0';
+                F_v.Id   := LinkTx_Id;
+                F_v.Rtr  := '0';
+                F_v.Dlc  := to_integer(unsigned(LinkTx_Dlc));
+                F_v.Data := LinkTx_Data;
+                DutLog_v.push(2, F_v);
+                -- No frame with a free COB-ID (DS-TX-05)
+                Id_v := to_integer(unsigned(LinkTx_Id(28 downto 18)));
+                if (Id_v >= 16#781# and Id_v <= 16#7DE#) or Id_v >= 16#7F0# then
+                    alert(ERROR, "frame with a free COB-ID " & to_hstring(LinkTx_Id(28 downto 18)));
+                end if;
+                Busy_v    := true;
+                Cnt_v     := maximum(RespDone, 1);
+                Aborted_v := RespAbort;
+            end if;
+
+            if Busy_v or Block_v > 0 or Stop_v then
+                LinkTx_Ready <= '0';
+            else
+                LinkTx_Ready <= '1';
+            end if;
+            if Stop_v then
+                LinkTx_Stopped <= '1';
+            else
+                LinkTx_Stopped <= '0';
             end if;
         end loop;
 
@@ -509,7 +570,7 @@ begin
         begin
             clocks(4);
 
-            while (SrcValid /= "0000000" or LinkTx_Valid = '1' or LinkTx_Ready = '1') and now < End_c loop
+            while (SrcValid /= "0000000" or LinkTx_Valid = '1' or LinkTx_Ready = '0') and now < End_c loop
                 wait until rising_edge(Clk);
             end loop;
 
@@ -913,7 +974,7 @@ begin
                 Nmt_NodeIdValid <= '1';
                 check_value(DutLog_v.count(2), N_v, ERROR, "no frame of a rejected request");
                 -- Withdraw in Send_s: the link does not take the frame
-                RespReady  <= 50;
+                RespBlock  <= 50;
                 request(0);
                 wait until rising_edge(Clk) and LinkTx_Valid = '1';
                 clocks(5);
@@ -922,13 +983,13 @@ begin
                 check_value(LinkTx_Valid, '0', ERROR, "frame withdrawn");
                 check_value(CntAbort(0), 2, ERROR, "withdrawn frame aborted");
                 Nmt_EnaPdo <= '1';
-                RespReady  <= 0;
+                RespBlock  <= 0;
                 clocks(60);
                 check_value(DutLog_v.count(2), N_v, ERROR, "the withdrawn frame was not taken");
                 -- Abort in Wait_s: one abort request, completion as reported by the link
                 RespDone   <= 100;
                 request(1);
-                wait until rising_edge(Clk) and LinkTx_Ready = '1';
+                wait until rising_edge(Clk) and LinkTx_Valid = '1' and LinkTx_Ready = '1';
                 clocks(10);
                 N_v        := CntAbortRq;
                 Nmt_EnaPdo <= '0';
@@ -1015,6 +1076,86 @@ begin
                     end loop;
 
                 end loop;
+
+            -- *** TC-DS-16: a completion that the link does not report ***
+            elsif run("test_tx_lost_completion") then
+                N_v      := DutLog_v.count(2);
+                RespDrop <= true;
+                request(4);
+                -- The take, then LinkTx_Ready again without a completion event
+                wait until rising_edge(Clk) and LinkTx_Valid = '1' and LinkTx_Ready = '1';
+                wait until rising_edge(Clk) and LinkTx_Ready = '1';
+                RespDrop <= false;
+                wait until falling_edge(Clk);
+                check_value(SrcAbort(4), '1', ERROR, "completed as aborted one cycle after LinkTx_Ready");
+                check_value(CntDone(4), 0, ERROR, "no done for the lost completion");
+                check_value(DutLog_v.count(2), N_v + 1, ERROR, "the frame was taken once");
+                -- The next requests are served
+                request(4);
+                request(0);
+                request(6);
+                waitTx;
+                check_value(CntDone(4), 1, ERROR, "Local Time PDO sent after the lost completion");
+                check_value(CntDone(0), 1, ERROR, "transmit PDO 1 sent after the lost completion");
+                check_value(CntDone(6), 1, ERROR, "NMT error control sent after the lost completion");
+                check_value(CntAbort(4), 1, ERROR, "one abort");
+
+            -- *** TC-DS-17: back-to-back frames at the earliest completion: no abort that the link did not report ***
+            elsif run("test_tx_earliest_completion") then
+
+                for K in 1 to 3 loop
+                    RespDone <= K;
+                    AutoReq  <= (others => true);
+                    clocks(400);
+                    AutoReq  <= (others => false);
+                    waitTx;
+                end loop;
+
+                N_v := 0;
+
+                for S in 0 to 6 loop
+                    check_value(CntTaken(S) > 0, true, ERROR, "frames of source " & to_string(S));
+                    check_value(CntAbort(S), 0, ERROR, "no abort of source " & to_string(S));
+                    check_value(CntDone(S), CntTaken(S), ERROR, "every frame of source " & to_string(S) & " done once");
+                    N_v := N_v + CntDone(S);
+                end loop;
+
+                check_value(DutLog_v.count(2), N_v, ERROR, "one frame on the link per done");
+
+            -- *** TC-DS-18: the link stopped between the grant and the take, a bus switch from the grant ***
+            elsif run("test_tx_link_stopped") then
+                N_v      := DutLog_v.count(2);
+                RespStop <= true;
+                request(5);
+                wait until rising_edge(Clk) and SrcReady(5) = '1';
+                wait until falling_edge(Clk);
+                check_value(LinkTx_Stopped, '1', ERROR, "controller of the active bus stopped from the grant on");
+                check_value(LinkTx_Valid, '1', ERROR, "granted frame offered");
+                wait until falling_edge(Clk);
+                check_value(SrcAbort(5), '1', ERROR, "granted frame withdrawn and completed as aborted");
+                check_value(LinkTx_Valid, '0', ERROR, "frame withdrawn");
+                -- While the link is stopped, no request is granted
+                request(5);
+                clocks(50);
+                check_value(CntTaken(5), 1, ERROR, "no grant while the link is stopped");
+                check_value(LinkTx_Valid, '0', ERROR, "no frame offered while the link is stopped");
+                -- Re-enable: the request is sent, the withdrawn frame never
+                RespStop <= false;
+                waitTx;
+                check_value(CntTaken(5), 2, ERROR, "request granted after the re-enable");
+                check_value(CntDone(5), 1, ERROR, "re-request sent");
+                check_value(CntAbort(5), 1, ERROR, "one abort");
+                check_value(DutLog_v.count(2), N_v + 1, ERROR, "only the re-request on the link");
+                -- A bus switch from the grant on: the frame waits and is sent
+                RespBlock <= 20;
+                request(6);
+                wait until rising_edge(Clk) and SrcReady(6) = '1';
+                RespBlock <= 0;
+                clocks(10);
+                check_value(LinkTx_Valid, '1', ERROR, "frame waits during the bus switch");
+                waitTx;
+                check_value(CntDone(6), 1, ERROR, "frame sent after the bus switch");
+                check_value(CntAbort(6), 0, ERROR, "no abort during the bus switch");
 
             -- *** Absent objects for the generics ***
             elsif run("test_generics") then

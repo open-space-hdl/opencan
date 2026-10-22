@@ -54,6 +54,7 @@ entity ocan_link_th is
         Tx_Done           : out   std_logic;
         Tx_Aborted        : out   std_logic;
         Tx_ArbLost        : out   std_logic;
+        Tx_Stopped        : out   std_logic;
         Rx_Valid          : out   std_logic_vector(1 downto 0);
         Stat_ActiveBus    : out   std_logic;
         Stat_Switching    : out   std_logic;
@@ -69,6 +70,7 @@ entity ocan_link_th is
         Err_Ack           : out   std_logic_vector(1 downto 0);
         Err_DomTimeout    : out   std_logic_vector(1 downto 0);
         ErrInj_TxDominant : in    std_logic_vector(1 downto 0);
+        ErrInj_StopFlip   : in    std_logic_vector(1 downto 0);
         -- Bus side, observed by the test
         Can_Tx            : out   std_logic_vector(1 downto 0);
         Can_TxEn          : out   std_logic_vector(1 downto 0);
@@ -138,6 +140,7 @@ begin
             Tx_Done           => Tx_Done,
             Tx_Aborted        => Tx_Aborted,
             Tx_ArbLost        => Tx_ArbLost,
+            Tx_Stopped        => Tx_Stopped,
             Rx_Valid          => RxValid,
             Rx_Id             => RxId,
             Rx_Ide            => RxIde,
@@ -158,6 +161,7 @@ begin
             Err_Ack           => Err_Ack,
             Err_DomTimeout    => Err_DomTimeout,
             ErrInj_TxDominant => ErrInj_TxDominant,
+            ErrInj_StopFlip   => ErrInj_StopFlip,
             Can_Tx            => CanTxInt,
             Can_TxEn          => CanTxEn,
             Can_Rx            => CanRx

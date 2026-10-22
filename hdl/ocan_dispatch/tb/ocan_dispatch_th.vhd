@@ -44,6 +44,7 @@ entity ocan_dispatch_th is
         LinkTx_Abort       : out   std_logic;
         LinkTx_Done        : in    std_logic;
         LinkTx_Aborted     : in    std_logic;
+        LinkTx_Stopped     : in    std_logic;
         Red_ActiveBus      : in    std_logic;
         Red_Selecting      : in    std_logic;
         Nmt_NodeId         : in    std_logic_vector(6 downto 0);
@@ -139,6 +140,7 @@ begin
             LinkTx_Abort       => LinkTx_Abort,
             LinkTx_Done        => LinkTx_Done,
             LinkTx_Aborted     => LinkTx_Aborted,
+            LinkTx_Stopped     => LinkTx_Stopped,
             Red_ActiveBus      => Red_ActiveBus,
             Red_Selecting      => Red_Selecting,
             Nmt_NodeId         => Nmt_NodeId,

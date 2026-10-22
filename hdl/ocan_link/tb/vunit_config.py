@@ -32,6 +32,7 @@ TESTS = {
     "test_dominant_timeout": ["sel", "par", "domlim13", "domlim1023"],
     "test_dominant_inactive": ["par"],
     "test_dominant_margin": ["sel"],
+    "test_stop_upset": ["sel", "par"],
     "test_back_to_back": ["sel", "par"],
     "test_sync_stages": ["sync3", "sync4"],
 }

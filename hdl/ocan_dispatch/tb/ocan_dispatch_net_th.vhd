@@ -72,6 +72,7 @@ architecture sim of ocan_dispatch_net_th is
     signal TxAbort   : std_logic;
     signal TxDone    : std_logic;
     signal TxAborted : std_logic;
+    signal TxStopped : std_logic;
     signal CanTx     : std_logic_vector(1 downto 0);
     signal CanTxEn   : std_logic_vector(1 downto 0);
     signal CanRx     : std_logic_vector(1 downto 0);
@@ -109,6 +110,7 @@ begin
             LinkTx_Abort       => TxAbort,
             LinkTx_Done        => TxDone,
             LinkTx_Aborted     => TxAborted,
+            LinkTx_Stopped     => TxStopped,
             Red_ActiveBus      => Red_ActiveBus,
             Red_Selecting      => '0',
             Nmt_NodeId         => Nmt_NodeId,
@@ -186,6 +188,7 @@ begin
             Tx_Done           => TxDone,
             Tx_Aborted        => TxAborted,
             Tx_ArbLost        => open,
+            Tx_Stopped        => TxStopped,
             Rx_Valid          => RxValid,
             Rx_Id             => RxId,
             Rx_Ide            => RxIde,
