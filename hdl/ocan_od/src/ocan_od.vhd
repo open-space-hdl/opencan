@@ -902,9 +902,10 @@ begin
                 Abort_v := AbortReadOnly_c;
             elsif Acc_Write = '0' and not D_v.Rd then
                 Abort_v := AbortWriteOnl_c;
-            elsif Acc_Write = '1' and Len_v > D_v.Size then
+            -- The number of bytes, when indicated (OD-WR-02); 0: not indicated, the size of the data type is taken
+            elsif Acc_Write = '1' and Len_v /= 0 and Len_v > D_v.Size then
                 Abort_v := AbortLenHigh_c;
-            elsif Acc_Write = '1' and Len_v < D_v.Size then
+            elsif Acc_Write = '1' and Len_v /= 0 and Len_v < D_v.Size then
                 Abort_v := AbortLenLow_c;
             elsif Acc_Write = '1' and D_v.PreOp1 and Nmt_State /= NmtPreOp_c then
                 Abort_v := AbortState_c;
