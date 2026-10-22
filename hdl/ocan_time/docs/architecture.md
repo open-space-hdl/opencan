@@ -28,7 +28,7 @@ divider (TM-CT-02). Two constants are computed from the generics:
 
 In every cycle `Acc` + `R_c` is formed. When it is f or more, `Acc` := `Acc` + `R_c` - f and `Time` advances by
 `Q_c` + 1; otherwise `Acc` := `Acc` + `R_c` and `Time` advances by `Q_c`. After n cycles from `Acc` = 0 the time has
-advanced by n * `Q_c` + floor(n * `R_c` / f) = floor(n * 2^F / f) units. The coarse time wraps with the counter
+advanced by `n * Q_c + floor(n * R_c / f)` = `floor(n * 2^F / f)` units. The coarse time wraps with the counter
 (TM-CT-03). A setting loads `Time` and clears `Acc` (TM-RX-03, TM-CT-05), except the high-resolution setting of
 section 4, which loads both from the elapsed counter.
 
