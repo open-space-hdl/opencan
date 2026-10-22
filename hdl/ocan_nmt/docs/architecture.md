@@ -49,7 +49,8 @@ Op_s and Stopped_s](img/ocan_nmt_fsm.drawio.svg)
 | `Op_s` | "10" | Operational | - |
 | `Stopped_s` | "11" | Stopped | - |
 
-`Reset_App` and `Reset_Comm` are decoded from the state: a reset node gives `Reset_App` and in the next cycle
+The encoding of `Stat_State` is defined once, as constants of the package `ocan_pkg`, which `ocan_redundancy` uses
+as well. `Reset_App` and `Reset_Comm` are decoded from the state: a reset node gives `Reset_App` and in the next cycle
 `Reset_Comm` (NM-SM-06). The `when others` branch leads to `ResetComm_s`, which samples the NODE-ID again and
 requests the boot-up message.
 
