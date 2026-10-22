@@ -64,6 +64,8 @@ def configs():
     cfg.append(("ocan_od", {"SctCobId_g": "1409"}, "SctCobId_g is a restricted or free identifier"))
     cfg.append(("ocan_od", {"LtpCobId_g": "2047"}, "LtpCobId_g is a restricted or free identifier"))
     cfg.append(("ocan_od", {"SctCobId_g": "1000", "LtpCobId_g": "1000"}, "SctCobId_g and LtpCobId_g are equal"))
+    # ocan_sdo has no generics
+    cfg.append(("ocan_sdo", {}, None))
     return cfg
 
 
