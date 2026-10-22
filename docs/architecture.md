@@ -89,9 +89,10 @@ transceivers (selective bus access, one bus at a time) or through one controller
 clause 8.2). The Redundancy Master sends its heartbeat on the active bus and switches the bus by moving its heartbeat
 to the other one (clause 8.3.3a, b). A slave node starts on the default bus, consumes the master heartbeat and sends
 its own heartbeat on the bus it considers active. When the master heartbeat is missing for Ttoggle consumer heartbeat
-times, the slave enters Pre-operational, switches to the other bus and looks for an NMT message there; after Ntoggle
-switches without success it stays on the default bus. When an NMT message arrives on a bus, that bus is the active one
-and becomes the new default (clause 8.3.3e to l). The parameters Bdefault, Ttoggle, Ntoggle and Ctoggle are the object
+times, the slave enters Pre-operational, switches to the other bus and looks for an NMT message or the master
+heartbeat there; after Ntoggle switches without success it stops toggling, on the default bus after an even number of
+switches. When one of them arrives on a bus, that bus is the active one and becomes the new default (clause 8.3.3e to
+l). The parameters Bdefault, Ttoggle, Ntoggle and Ctoggle are the object
 2000h; the heartbeat times are 1016h and 1017h (clause 8.3.1).
 
 **Time (clause 7).** A device that keeps time uses SCET, an unsegmented CCSDS time code of 32 bits of seconds and up
@@ -179,7 +180,9 @@ the active bus](img/ocan_core_overview.drawio.svg)
 
 One clock domain. The bus inputs pass the synchronisers of `olo_intf_can` (`SyncTmr_g`). A synchronous reset
 corresponds to the power-on or hardware reset of clause 8.3.2a: the node restarts on Bdefault. The NMT services Reset
-Node and Reset Communication reset the protocol state as defined by \[CiA301\], not the whole core.
+Node and Reset Communication reset the protocol state as defined by \[CiA301\], not the whole core; the
+effect of each reset on each block is the table in section 2.6 of the
+[ocan_nmt specification](../hdl/ocan_nmt/docs/specification.md).
 
 ### 6.3 Internal interfaces
 
@@ -191,7 +194,10 @@ Node and Reset Communication reset the protocol state as defined by \[CiA301\], 
   most one frame of each other source.
 - Dispatch to redundancy: the reception of a master heartbeat and of an NMT message, per bus (section 6.5).
 - Redundancy to link and dispatch: the active bus and the enable and mode of each controller; redundancy to NMT: the
-  request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e); NMT to redundancy: the NMT state.
+  request to enter Pre-operational at a missing master heartbeat (clause 8.3.3e), an event at every bus switch and
+  the state of the bus selection process; NMT to redundancy: the NMT state.
+- NMT to dispatch: the protected NODE-ID with its valid flag and the service enables; NMT to all blocks: the events
+  of the reset application and reset communication sub-states (section 6.2).
 - A millisecond tick (`olo_base_strobe_gen`) for the heartbeat producer, the heartbeat consumer and the toggling
   timer.
 
@@ -219,21 +225,24 @@ replies) on it only (clause 8.3.3d) and changes it by the rules of clauses 8.3.3
 
 **NMT message.** Clause 8.3.3 distinguishes the Master Heartbeat messages (8.3.3a, c) from the NMT message that
 identifies the active bus (8.3.3g, h, j). An NMT message is a frame of the NMT module control service (COB-ID 000h)
-addressed to the node or to all nodes.
+addressed to the node or to all nodes. OpenCAN ends the bus selection with either of them (Table 8-1, Annex A.4.1;
+section 5 of the specification of `ocan_redundancy`).
 
 **Frames of the inactive bus.** `ocan_dispatch` passes the frames of the active bus to the protocol blocks and
 discards the frames of the inactive bus, with one exception. During the bus selection process, that is in
-Pre-operational after a missing master heartbeat (clauses 8.3.3e to j), an NMT message on the inactive bus makes that
-bus the active one (clause 8.3.3g). The node switches to it at once instead of at its next toggle, ends the bus
-selection (clause 8.3.3k), updates Bdefault (clause 8.3.3l) and processes the NMT message as the first frame of the
-new active bus. Outside the bus selection process no frame of the inactive bus changes the active bus: the master
-heartbeat is present on the active bus, and a faulty node on the inactive bus cannot move the node away from a
-Redundancy Master that operates on the active bus (clauses 8.1a, 8.3.3a, b).
+Pre-operational after a missing master heartbeat (clauses 8.3.3e to j), an NMT message or a master heartbeat on the
+inactive bus makes that bus the active one (clause 8.3.3g). The node switches to it at once instead of at its next
+toggle, starts its heartbeat there (clause 8.3.3h), ends the bus selection (clause 8.3.3k), updates Bdefault
+(clause 8.3.3l) and processes an NMT message as the first frame of the new active bus. Outside the bus selection
+process no frame of the inactive bus changes the active bus: the master heartbeat is present on the active bus, and a
+faulty node on the inactive bus cannot move the node away from a Redundancy Master that operates on the active bus
+(clauses 8.3.3a, b).
 
 **No double delivery.** The protocol blocks receive the frames of one bus at a time, so no frame reaches them twice,
 also when the same frame is present on both buses. The NMT message that ends a bus selection on the inactive bus is
 delivered once, as a frame of the new active bus; from then on the frames of the former active bus are discarded.
-When NMT messages complete on both buses in the same clock cycle, the bus that the node currently uses wins.
+When NMT messages or master heartbeats complete on both buses in the same clock cycle, the bus that the node
+currently uses wins.
 
 **Monitoring.** The error state, the error counters and the error events of both controllers are status outputs
 (clause 5.6.2): the application sees the condition of the redundant bus without a bus switch.
@@ -296,7 +305,8 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | 6.3 | Synchronisation object | `ocan_pdo` | `ocan_time` | Unit |
 | 6.4 | Emergency object | Not implemented (D9, optional object) | - | - |
 | 6.5.1 | Module control services | `ocan_nmt` | - | Unit |
-| 6.5.2 | Error control services, heartbeat | `ocan_nmt` | `ocan_redundancy` | Unit |
+| 6.5.2a | Error control services, heartbeat production | `ocan_nmt` | `ocan_dispatch` | Unit |
+| 6.5.2b | Error control services, consumption of the master heartbeat | `ocan_redundancy` | `ocan_dispatch` | Unit |
 | 6.5.3 | Bootup service | `ocan_nmt` | - | Unit |
 | 6.5.4 | Node state diagram | `ocan_nmt` | - | Unit |
 | 6.6 | Electronic data sheets | Out of scope, device | `ocan_od` | - |
