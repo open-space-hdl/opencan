@@ -190,7 +190,8 @@ architecture sim of ocan_time_tb is
 
 begin
 
-    test_runner_watchdog(runner, 2000 ms);
+    -- Simulated time: 2^24 + 12345 cycles at 1 MHz take 17 s
+    test_runner_watchdog(runner, 30 sec);
 
     i_th : entity work.ocan_time_th
         generic map (
@@ -687,6 +688,11 @@ begin
 
         test_runner_setup(runner, runner_cfg);
         set_alert_stop_limit(ERROR, 0);
+        -- At a clock period that is not a multiple of 0.1 ns UVVM truncates the time stamp of a log message and warns
+        -- once (TB_WARNING); the checks count cycles, so the warning is expected
+        if ((1 sec / ClkFrequency_g) / 1 fs) mod 100000 /= 0 then
+            increment_expected_alerts(TB_WARNING, 1);
+        end if;
 
         while test_suite loop
 
