@@ -38,7 +38,7 @@ all modules, with and without code coverage, for the first release.
 | `ocan_nmt` | b | NMT slave state machine, boot-up, heartbeat producer, NODE-ID check | 21 of 21 runs pass | 32: 31 detected, 1 by design review |
 | `ocan_redundancy` | b | Bus selection at start-up, master heartbeat consumer, bus toggling, update of Bdefault | 30 of 30 runs pass | 40: 37 detected, 3 by design review |
 | `ocan_time` | c | Local SCET, Spacecraft Time PDO consumer, Local Time PDO producer, sample at SYNC | 122 of 122 runs pass | 33: 32 detected, 1 by design review |
-| `ocan_od` | c | Object dictionary of the communication profile and of clause 8, object access port | Open | Open |
+| `ocan_od` | c | Object dictionary of the communication profile and of clause 8, object access port | 36 of 36 runs pass | 51, all detected |
 | `ocan_sdo` | c | SDO server | Open | Open |
 | `ocan_pdo` | c | Receive and transmit PDOs, transmission types, SYNC consumer | Open | Open |
 | `ocan_core` | c | Top level, generics and ports | Open | Open |
