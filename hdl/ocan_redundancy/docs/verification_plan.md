@@ -19,7 +19,7 @@ Tests observe the ports of `ocan_redundancy`, the ports of the other blocks, the
 
 | Testbench | Harness | DUT and environment |
 | --- | --- | --- |
-| `ocan_redundancy_tb` | `ocan_redundancy_th` | `ocan_redundancy`, `Clk` 40 MHz; drivers of the per-bus events and of the parameters; an NMT model that enters Pre-operational a configurable number of cycles after `Nmt_PreopReq` and passes the Initialisation on command; a link model that answers a change of `Link_Bus` with `Link_Switching` = '1' for a configurable number of cycles and then the new `Link_ActiveBus`; a tick generator whose period M the test sets (16 cycles unless stated); the reference model |
+| `ocan_redundancy_tb` | `ocan_redundancy_th` | `ocan_redundancy`, `Clk` 40 MHz; drivers of the per-bus events and of the parameters; an NMT model that enters Pre-operational a configurable number of cycles after `Nmt_PreopReq`, passes the Initialisation on command and is in the Initialisation during `Rst` and for 4 cycles after it, as `ocan_nmt`; a link model that answers a change of `Link_Bus` with `Link_Switching` = '1' for a configurable number of cycles and then the new `Link_ActiveBus`, and that is disabled during `Rst` and for 4 cycles after it, with the requested bus as the active bus (LK-BS-01); a tick generator whose period M the test sets (4 cycles unless stated); the reference model |
 | `ocan_redundancy_net_tb` | `ocan_redundancy_net_th` | `ocan_redundancy`, `ocan_nmt`, `ocan_dispatch` and `ocan_link` with `ocan_tb_can_bus`; the model nodes M1 (Redundancy Master: heartbeat on a chosen bus, NMT messages) and M2 on each bus, 1 Mbit/s with the bit timing of the plan of `ocan_link`; faults on each bus (stuck dominant, broken); the millisecond tick from `olo_base_strobe_gen`; the parameters as constants of the harness |
 
 | VUnit configuration | Generics | Purpose |
@@ -45,7 +45,7 @@ Checkers that run in every test of the direct bench:
 | --- | --- | --- |
 | `test_startup` (TC-RM-01) | After `Rst` with Bdefault 0 and with 1: `Link_Bus` follows `Cfg_Bdefault` until the NMT model enters Pre-operational; then the start-up process starts on that bus without a switch, with `Ctoggle` 0 and `Stat_Selecting` '1'. Configuration `minimal`: no bus selection; the monitoring starts when the NMT model leaves the Initialisation | RM-SL-01, RM-MS-02, RM-IF-03, RM-IF-04, RM-IF-05 |
 | `test_hb_dlc` (TC-RM-02) | Master heartbeats with DLC 0 and 2 to 15 on each bus: `Err_HbDlc`, no restart of the timer, no presence; with DLC 1 and every state byte 0 to 255: accepted, `Stat_HbState` holds the byte. Wrong DLCs on both buses in one cycle: one `Err_HbDlc` | RM-HB-01, RM-IF-01, RM-IF-07 |
-| `test_hb_monitoring` (TC-RM-03) | (C, T) = (1, 1), (5, 3), (2, 255), (65535, 1) and T = 0: master heartbeats shortly before the limit keep the monitoring; without them `Err_HbMissing` and `Nmt_PreopReq` come T x C ticks after the last one. Bounds with tick period M: after a heartbeat one cycle after a tick the expiring tick comes T x C x M - 1 cycles later, after one a cycle before a tick (T x C - 1) x M + 1 cycles later; the events follow one cycle after that tick | RM-HB-02, RM-HB-04, RM-IF-06, RM-IF-07 |
+| `test_hb_monitoring` (TC-RM-03) | (C, T) = (1, 1), (5, 3), (2, 255), (65535, 1) and T = 0 (C = 1 is set with the measured heartbeat, so that no expiry comes before it): master heartbeats shortly before the limit keep the monitoring; without them `Err_HbMissing` and `Nmt_PreopReq` come T x C ticks after the last one. Bounds with tick period M: after a heartbeat one cycle after a tick the expiring tick comes T x C x M - 1 cycles later, after one a cycle before a tick (T x C - 1) x M + 1 cycles later; the events follow one cycle after that tick | RM-HB-02, RM-HB-04, RM-IF-06, RM-IF-07 |
 | `test_hb_disabled` (TC-RM-04) | C = 0: no `Err_HbMissing` and no toggle in 100000 ticks, in `Monitor_s` and in a bus selection process; the process ends only by a message; `Stat_HbPresent` stays "00" | RM-HB-03, RM-HB-05 |
 | `test_hb_presence` (TC-RM-05) | Master heartbeats on either bus set `Stat_HbPresent` of that bus; it is cleared C ticks after the last one. Heartbeats on the inactive bus outside a bus selection process set its presence but do not restart the timer | RM-HB-05, RM-SL-07, RM-IF-07 |
 | `test_param_change` (TC-RM-06) | A change of C or of T in `Monitor_s` and in `Select_s` restarts the timer: the next expiry comes T x C ticks after the change, with the new values | RM-HB-04 |
@@ -103,16 +103,21 @@ Checkers that run in every test of the direct bench:
 | Writes of Bdefault, Ctoggle and Ntoggle during a process | TC-RM-12 |
 | Broken and stuck buses | TC-RM-19 |
 
-## 6. Functional coverage
+## 6. Input space covered by the directed tests
 
-| Coverpoint | Requirements | Bins | Goal |
-| --- | --- | --- | --- |
-| State x event | RM-IF-08, RM-SL-05, RM-SL-06, RM-SL-07 | {`Monitor_s`, `Select_s`, `Switch_s`} x {heartbeat, NMT message, wrong DLC} x {active bus, inactive bus, both} | 100 % |
-| Consumer heartbeat time C | RM-HB-02, RM-HB-03 | 0, 1, 2 to 9, 10 to 65534, 65535 | 100 % |
-| Ttoggle T | RM-HB-04 | 0, 1, 2 to 254, 255 | 100 % |
-| Ntoggle N and Ctoggle at the end | RM-SL-04, RM-SL-09 | N {0, 1, even, odd, 255}; end bus {start bus, other bus} | 100 % |
-| Same-cycle inputs | RM-SL-10, RM-HB-04 | write with a toggle; restart with a tick; messages on both buses | 100 % |
+The bench collects no functional coverage. The directed tests cover these classes of the input space, each in a
+named test case:
+
+| Input | Requirements | Classes and test cases |
+| --- | --- | --- |
+| State x event | RM-IF-08, RM-SL-05, RM-SL-06, RM-SL-07 | Heartbeats with every DLC on either bus and on both in one cycle in `Monitor_s` (TC-RM-02); NMT messages and heartbeats on the inactive bus in `Monitor_s` (TC-RM-05, TC-RM-11); on the active bus in `Select_s` (TC-RM-09); on the inactive bus in `Select_s`, on the requested bus and on the bus left in `Switch_s`, on both buses in one cycle (TC-RM-10); random events of both buses in every cycle in all three states (TC-RM-14) |
+| Consumer heartbeat time C | RM-HB-02, RM-HB-03 | 0 (TC-RM-04, TC-RM-16), 1, 2, 3, 5 and 65535 (TC-RM-03), 10 (TC-RM-05); changes 5 to 7 (TC-RM-06) and 0 to 3 (TC-RM-16) |
+| Ttoggle T | RM-HB-04 | 0, 1, 3 and 255 (TC-RM-03), 2 (the default, TC-RM-09 to TC-RM-13); change 2 to 4 during a process (TC-RM-06) |
+| Ntoggle N and the end bus | RM-SL-04, RM-SL-09 | N = 0, 1, 2, 3 and 255 with Bdefault 0 and 1, the end on the start bus and on the other bus (TC-RM-08); Ntoggle and Ctoggle written during a process (TC-RM-12) |
+| Same-cycle inputs | RM-SL-10, RM-HB-04 | a write of Ctoggle in the cycle of a toggle (TC-RM-12); a heartbeat one cycle before and one cycle after a tick (TC-RM-03); messages on both buses in one cycle (TC-RM-02, TC-RM-10) |
 
 ## 7. Not verified at the ports
 
-The `when others` branch of the state machine cannot be reached from the ports; `docs/coverage.md` justifies it.
+- The `when others` branch of the state machine cannot be reached from the ports. It recovers only when the
+  synthesis tool implements the state machine safely (architecture, section 3; protection scope of the user
+  guide); it is covered by design review.

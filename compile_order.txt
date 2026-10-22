@@ -2,3 +2,4 @@ hdl/ocan_pkg/src/ocan_pkg.vhd
 hdl/ocan_link/src/ocan_link.vhd
 hdl/ocan_dispatch/src/ocan_dispatch.vhd
 hdl/ocan_nmt/src/ocan_nmt.vhd
+hdl/ocan_redundancy/src/ocan_redundancy.vhd

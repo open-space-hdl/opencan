@@ -87,7 +87,9 @@ A message on bus b is a master heartbeat (section 2.1) or an NMT message on bus 
 | `Switch_s` | Timer expired | `ToggleDue` := '1' | `Switch_s` |
 
 The `when others` branch leads to `Monitor_s` with a restart: the node keeps its bus, and a missing master heartbeat
-starts a new bus selection.
+starts a new bus selection. As in every core of the family, this recovery from an illegal state works only when the
+synthesis tool implements the state machine safely: `ocan_redundancy` protects none of its registers itself, they
+rely on the TMR and the safe state machines of the synthesis tool (protection scope of the user guide).
 
 - **Same-cycle messages.** A message on the active bus wins over one on the inactive bus in the same cycle
   (RM-SL-06, DS-BG-04).
