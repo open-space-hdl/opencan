@@ -89,9 +89,10 @@ transceivers (selective bus access, one bus at a time) or through one controller
 clause 8.2). The Redundancy Master sends its heartbeat on the active bus and switches the bus by moving its heartbeat
 to the other one (clause 8.3.3a, b). A slave node starts on the default bus, consumes the master heartbeat and sends
 its own heartbeat on the bus it considers active. When the master heartbeat is missing for Ttoggle consumer heartbeat
-times, the slave enters Pre-operational, switches to the other bus and looks for an NMT message there; after Ntoggle
-switches without success it stays on the default bus. When an NMT message arrives on a bus, that bus is the active one
-and becomes the new default (clause 8.3.3e to l). The parameters Bdefault, Ttoggle, Ntoggle and Ctoggle are the object
+times, the slave enters Pre-operational, switches to the other bus and looks for an NMT message or the master
+heartbeat there; after Ntoggle switches without success it stops toggling, on the default bus after an even number of
+switches. When one of them arrives on a bus, that bus is the active one and becomes the new default (clause 8.3.3e to
+l). The parameters Bdefault, Ttoggle, Ntoggle and Ctoggle are the object
 2000h; the heartbeat times are 1016h and 1017h (clause 8.3.1).
 
 **Time (clause 7).** A device that keeps time uses SCET, an unsegmented CCSDS time code of 32 bits of seconds and up
@@ -224,21 +225,24 @@ replies) on it only (clause 8.3.3d) and changes it by the rules of clauses 8.3.3
 
 **NMT message.** Clause 8.3.3 distinguishes the Master Heartbeat messages (8.3.3a, c) from the NMT message that
 identifies the active bus (8.3.3g, h, j). An NMT message is a frame of the NMT module control service (COB-ID 000h)
-addressed to the node or to all nodes.
+addressed to the node or to all nodes. OpenCAN ends the bus selection with either of them (Table 8-1, Annex A.4.1;
+section 5 of the specification of `ocan_redundancy`).
 
 **Frames of the inactive bus.** `ocan_dispatch` passes the frames of the active bus to the protocol blocks and
 discards the frames of the inactive bus, with one exception. During the bus selection process, that is in
-Pre-operational after a missing master heartbeat (clauses 8.3.3e to j), an NMT message on the inactive bus makes that
-bus the active one (clause 8.3.3g). The node switches to it at once instead of at its next toggle, ends the bus
-selection (clause 8.3.3k), updates Bdefault (clause 8.3.3l) and processes the NMT message as the first frame of the
-new active bus. Outside the bus selection process no frame of the inactive bus changes the active bus: the master
-heartbeat is present on the active bus, and a faulty node on the inactive bus cannot move the node away from a
-Redundancy Master that operates on the active bus (clauses 8.1a, 8.3.3a, b).
+Pre-operational after a missing master heartbeat (clauses 8.3.3e to j), an NMT message or a master heartbeat on the
+inactive bus makes that bus the active one (clause 8.3.3g). The node switches to it at once instead of at its next
+toggle, starts its heartbeat there (clause 8.3.3h), ends the bus selection (clause 8.3.3k), updates Bdefault
+(clause 8.3.3l) and processes an NMT message as the first frame of the new active bus. Outside the bus selection
+process no frame of the inactive bus changes the active bus: the master heartbeat is present on the active bus, and a
+faulty node on the inactive bus cannot move the node away from a Redundancy Master that operates on the active bus
+(clauses 8.3.3a, b).
 
 **No double delivery.** The protocol blocks receive the frames of one bus at a time, so no frame reaches them twice,
 also when the same frame is present on both buses. The NMT message that ends a bus selection on the inactive bus is
 delivered once, as a frame of the new active bus; from then on the frames of the former active bus are discarded.
-When NMT messages complete on both buses in the same clock cycle, the bus that the node currently uses wins.
+When NMT messages or master heartbeats complete on both buses in the same clock cycle, the bus that the node
+currently uses wins.
 
 **Monitoring.** The error state, the error counters and the error events of both controllers are status outputs
 (clause 5.6.2): the application sees the condition of the redundant bus without a bus switch.
