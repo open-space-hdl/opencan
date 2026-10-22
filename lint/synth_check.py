@@ -37,6 +37,8 @@ def configs():
         cfg.append(("ocan_dispatch", {"NumTpdo_g": str(n)}, None))
     for flag in ("TimePdos_g", "SdoServer_g"):
         cfg.append(("ocan_dispatch", {flag: "false"}, None))
+    for minimal in ("false", "true"):
+        cfg.append(("ocan_nmt", {"MinimalSet_g": minimal}, None))
     return cfg
 
 
