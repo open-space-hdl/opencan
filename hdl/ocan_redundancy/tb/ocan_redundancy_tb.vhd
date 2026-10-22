@@ -89,8 +89,11 @@ architecture sim of ocan_redundancy_tb is
     signal Cyc     : natural := 0;
     signal TickPer : natural := 4;
 
-    -- *** Model of ocan_nmt: Initialisation during Rst and 4 cycles after it, then follows NmtTarget; enters
-    -- Pre-operational NmtDly cycles after Nmt_PreopReq ***
+    -- *** Model of ocan_nmt: Initialisation during Rst and 4 cycles after it, then follows NmtTarget. Enters
+    -- Pre-operational NmtDly cycles after the first Nmt_PreopReq in Operational or Stopped: the request changes these
+    -- states to Pre-operational and has no effect in Pre-operational (NM-SM-05), so a node that has accepted it keeps
+    -- its way there. NmtDly is the reaction time of ocan_nmt, on which ocan_redundancy shall not depend (RM-IF-05);
+    -- with NmtIgnore the requests are not followed ***
     signal NmtTarget : std_logic_vector(1 downto 0) := NmtInit_c;
     signal NmtDly    : natural                      := 1;
     -- The NMT model does not follow Nmt_PreopReq while NmtIgnore

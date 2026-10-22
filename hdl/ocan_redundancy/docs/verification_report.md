@@ -19,7 +19,8 @@ requirements of the specification and is independent of the state machine of the
 section 1). Run against the RTL of the reviewed state before the corrections of RM-SL-01 and RM-SL-03 and of the
 compares, the same benches fail in 9 of 30 runs, among them by the comparison with the reference model in the random
 test TC-RM-14 and in TC-RM-20. The network testbench runs `ocan_redundancy` with `ocan_nmt`, `ocan_dispatch` and
-`ocan_link` on the CAN network model of `tb/`; TC-RM-25 injects one NMT message at the input of `ocan_nmt`.
+`ocan_link` on the CAN network model of `tb/`; TC-RM-25 injects one NMT message at the receive input of `ocan_nmt`
+(`Rx_Valid`, `Rx_Cs`) in the network harness, while `ocan_link` reports the switch; the modules stay the real ones.
 
 QuestaSim: not run yet; it runs with the first release of OpenCAN.
 
