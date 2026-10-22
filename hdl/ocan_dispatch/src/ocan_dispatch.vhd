@@ -257,9 +257,10 @@ begin
         end if;
     end process;
 
-    -- Requester bit 6 - s of source s; the arbiter is served in Idle_s only
+    -- Requester bit 6 - s of source s; the arbiter is served in Idle_s only. No grant to a source in the cycle of its
+    -- own completion event, so that Ready with Aborted is the reject path only and Ready never comes with Done (DS-TX-03)
     g_req : for S in 0 to 6 generate
-        ArbReq(6 - S) <= SrcValid(S) and SrcAllowed(S) and not r.Rej(S);
+        ArbReq(6 - S) <= SrcValid(S) and SrcAllowed(S) and not r.Rej(S) and not r.CplDone(S) and not r.CplAbort(S);
     end generate;
 
     ArbReady <= '1' when r.TxState = Idle_s else '0';
