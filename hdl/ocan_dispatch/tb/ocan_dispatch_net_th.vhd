@@ -79,10 +79,11 @@ architecture sim of ocan_dispatch_net_th is
     signal NodeTx    : std_logic_vector(3 downto 0);
     signal Level     : std_logic_vector(1 downto 0);
     -- Constant inputs as signals (no expressions as actuals)
-    signal Presc     : std_logic_vector(9 downto 0) := std_logic_vector(to_unsigned(2, 10));
-    signal Tseg1     : std_logic_vector(4 downto 0) := std_logic_vector(to_unsigned(15, 5));
-    signal Tseg2     : std_logic_vector(3 downto 0) := std_logic_vector(to_unsigned(4, 4));
-    signal Sjw       : std_logic_vector(2 downto 0) := std_logic_vector(to_unsigned(4, 3));
+    signal Presc     : std_logic_vector(9 downto 0)   := std_logic_vector(to_unsigned(2, 10));
+    signal Tseg1     : std_logic_vector(4 downto 0)   := std_logic_vector(to_unsigned(15, 5));
+    signal Tseg2     : std_logic_vector(3 downto 0)   := std_logic_vector(to_unsigned(4, 4));
+    signal Sjw       : std_logic_vector(2 downto 0)   := std_logic_vector(to_unsigned(4, 3));
+    signal Zero256   : std_logic_vector(255 downto 0) := (others => '0');
 
 begin
 
@@ -142,7 +143,7 @@ begin
             TxTpdo_Valid       => Src_Valid(3 downto 0),
             TxTpdo_Ready       => Src_Ready(3 downto 0),
             TxTpdo_Dlc         => x"8888",
-            TxTpdo_Data        => (others => '0'),
+            TxTpdo_Data        => Zero256,
             TxTpdo_Done        => Src_Done(3 downto 0),
             TxTpdo_Aborted     => Src_Aborted(3 downto 0),
             TxTime_Valid       => Src_Valid(4),

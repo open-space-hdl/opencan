@@ -690,7 +690,7 @@ begin
         set_alert_stop_limit(ERROR, 0);
         -- At a clock period that is not a multiple of 0.1 ns UVVM truncates the time stamp of a log message and warns
         -- once (TB_WARNING); the checks count cycles, so the warning is expected
-        if ((1 sec / ClkFrequency_g) / 1 fs) mod 100000 /= 0 then
+        if (1 sec / ClkFrequency_g) mod 100 ps /= 0 ns then
             increment_expected_alerts(TB_WARNING, 1);
         end if;
 

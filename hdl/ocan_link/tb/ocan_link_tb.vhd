@@ -515,6 +515,8 @@ begin
 
         variable Sent_v : boolean;
         variable Tec_v  : std_logic_vector(17 downto 0);
+        variable E0_v   : TbFrameEntry_t;
+        variable E1_v   : TbFrameEntry_t;
         variable St_v   : std_logic_vector(3 downto 0);
     begin
 
@@ -642,7 +644,10 @@ begin
                 waitNodes;
                 check_value(DutLog_v.count(0), 1, ERROR, "frame on bus A");
                 check_value(DutLog_v.count(1), 1, ERROR, "frame on bus B");
-                check_value(DutLog_v.get(0, 0).T = DutLog_v.get(1, 0).T, ERROR, "events in the same cycle");
+                -- One call of the protected method per variable
+                E0_v := DutLog_v.get(0, 0);
+                E1_v := DutLog_v.get(1, 0);
+                check_value(E0_v.T = E1_v.T, ERROR, "events in the same cycle");
 
             elsif run("test_bit_rates") then
 
