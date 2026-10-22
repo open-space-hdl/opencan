@@ -809,6 +809,21 @@ begin
                 Cfg_SetValid <= '0';
                 wait until falling_edge(Clk);
                 check_value(Stat_Scet(55 downto 24), x"44444444", ERROR, "the write wins over the load");
+                -- A write in the cycle of a high-resolution PDO: the write wins, and the load does not follow
+                sync;
+                clocks(5);
+                wait until rising_edge(Clk);
+                Cfg_SetValid <= '1';
+                Cfg_SetScet  <= x"55555555555555";
+                Rx_TimeValid <= '1';
+                Rx_TimeDlc   <= x"7";
+                Rx_TimeData  <= frameOf(x"66666666666666");
+                wait until rising_edge(Clk);
+                Cfg_SetValid <= '0';
+                Rx_TimeValid <= '0';
+                clocks(2);
+                wait until falling_edge(Clk);
+                check_value(Stat_Scet(55 downto 24), x"55555555", ERROR, "the write cancels the load");
 
             -- *** TC-TM-06: SYNC sample ***
             elsif run("test_sync_sample") then
@@ -836,6 +851,21 @@ begin
                         check_value(CntSync, C0_v, ERROR, "no sample for DLC " & to_string(Dlc));
                         check_value(TxCnt, N_v, ERROR, "no frame for DLC " & to_string(Dlc));
                     end if;
+                end loop;
+
+                -- SYNCs at random distances, so that the samples fall on every phase of the accumulator, also on
+                -- the cycles before an advance
+                for I in 1 to 64 loop
+                    N_v          := TxCnt;
+                    wait until rising_edge(Clk);
+                    Rx_SyncValid <= '1';
+                    Rx_SyncDlc   <= x"0";
+                    wait until falling_edge(Clk);
+                    T_v          := Stat_Scet;
+                    wait until rising_edge(Clk);
+                    Rx_SyncValid <= '0';
+                    clocks(random(10, 20));
+                    check_value(scetOf(LogData(N_v)), T_v, ERROR, "sample of SYNC " & to_string(I));
                 end loop;
 
             -- *** TC-TM-07: format of the Spacecraft Time PDO ***
@@ -1064,6 +1094,30 @@ begin
                     request;
                     clocks(10);
                     check_value(TxCnt, N_v + 2, ERROR, "frame with the last sample");
+                end loop;
+
+                -- High-resolution protocol: SYNCs and requests at random distances, so that the samples fall on
+                -- every phase of the accumulator; a request in the cycle of a SYNC carries the sample of that SYNC
+                for I in 1 to 64 loop
+                    N_v          := TxCnt;
+                    wait until rising_edge(Clk);
+                    Rx_SyncValid <= '1';
+                    Rx_SyncDlc   <= x"0";
+                    if I mod 8 = 0 then
+                        Req_Valid <= '1';
+                    end if;
+                    wait until falling_edge(Clk);
+                    T_v          := Stat_Scet;
+                    wait until rising_edge(Clk);
+                    Rx_SyncValid <= '0';
+                    Req_Valid    <= '0';
+                    if I mod 8 /= 0 then
+                        clocks(random(0, 30));
+                        request;
+                    end if;
+                    clocks(10);
+                    check_value(TxCnt, N_v + 1, ERROR, "frame at request " & to_string(I));
+                    check_value(scetOf(LogData(N_v)), T_v, ERROR, "last sample in frame " & to_string(I));
                 end loop;
 
             -- *** TC-TM-15: types 241 to 253 of the Local Time PDO ***
