@@ -95,9 +95,9 @@ Sources and their requester bits at `olo_base_arb_rr` (`Width_g` = 7; the left-m
 
 | State | `LinkTx_Valid` | Exit |
 | --- | --- | --- |
-| `Idle_s` | '0' | Grant: the frame of the granted source is registered, `Ready` of that source, `Out_Ready` of the arbiter; to `Send_s` |
-| `Send_s` | '1' | `LinkTx_Ready` = '1': to `Wait_s`. The service enable of the owner cleared or the NODE-ID invalid: `Aborted` to the owner, to `Idle_s` (the link has not taken the frame) |
-| `Wait_s` | '0' | `LinkTx_Done`: `Done` to the owner; `LinkTx_Aborted`: `Aborted` to the owner; to `Idle_s`. The service enable of the owner cleared or the NODE-ID invalid: `LinkTx_Abort` (once) |
+| `Idle_s` | '0' | Grant while `LinkTx_Ready` is '1' (DS-TX-08): the frame of the granted source is registered, `Ready` of that source, `Out_Ready` of the arbiter; to `Send_s` |
+| `Send_s` | '1' | `LinkTx_Ready` = '1': to `Wait_s`. `LinkTx_Stopped` = '1', the service enable of the owner cleared or the NODE-ID invalid: `Aborted` to the owner, to `Idle_s` (the link has not taken the frame). During a bus switch the frame waits (DS-TX-08) |
+| `Wait_s` | '0' | `LinkTx_Done`: `Done` to the owner; `LinkTx_Aborted`: `Aborted` to the owner; `LinkTx_Ready` = '1' without a completion event: `Aborted` to the owner (DS-TX-07); to `Idle_s`. The service enable of the owner cleared or the NODE-ID invalid: `LinkTx_Abort` (once) |
 
 The `when others` branch leads to `Idle_s`. The completion events go to the owner of the frame only (DS-TX-03).
 
@@ -108,6 +108,53 @@ comes together with `Done`. A protocol block that stops waiting for a taken fram
 communication or a time-out) may request again at once; the late completion of the old frame cannot be taken for
 the completion of the new request. The other protocol blocks rely on the same rule.
 The frames are data frames with an 11-bit identifier; `ocan_core` ties `Tx_Ide` and `Tx_Rtr` of `ocan_link` to '0'.
+
+### 5.1 Completion invariant of the link (DS-TX-07)
+
+DS-TX-07 relies on this property of `ocan_link` and `olo_intf_can`: from the cycle after the link has taken a frame
+until the cycle of its completion event, `LinkTx_Ready` is '0'. A `LinkTx_Ready` = '1' in `Wait_s` without
+`LinkTx_Done` or `LinkTx_Aborted` therefore means that the link holds no frame of the dispatch, and the frame is
+completed as aborted. The line numbers refer to `olo_intf_can` of Open Logic `4.7.0-ft.9` and to `ocan_link` of this
+repository.
+
+- **olo_intf_can.** `TxPending` is set only at the take (line 327: `Tx_Valid` = '1' and `TxPending` = '0'). Every
+  assignment that clears it outside `Rst` sets the completion flag in the same branch: lines 242 and 244 (a failed
+  attempt of an aborted frame), 340 and 342 (abort of a frame that is not on the bus), 470 and 472 (lost arbitration
+  of an aborted frame), 707 and 708 (sent), 1004 and 1006 (aborted frame dropped). `Tx_Ready` is `not TxPending`, and
+  `Tx_Done` and `Tx_Aborted` are registers of the same cycle (lines 1017 to 1020), so `Tx_Ready` rises exactly in the
+  cycle of the completion event. Bus off keeps the frame (lines 247 to 252, LK-TX-03): `Tx_Ready` stays '0' until
+  the recovery.
+- **ocan_link, the take.** `Tx_Ready` is `Tx_Ready` of the controller of the active bus only in `Run_s` while that
+  controller is not stopped (line 283); `Tx_Valid` reaches that controller under the same condition (lines 273 and
+  274), and the abort request of the dispatch is never '1' in `Send_s`. Every cycle with `LinkTx_Ready` and
+  `LinkTx_Valid` at '1' is therefore a take by the controller of the active bus.
+- **ocan_link, the controller of the active bus.** It changes in two places only. From `Abort_s` to `Switch_s` it
+  changes after its `Tx_Ready` is '1' (lines 325 to 328), in or after the cycle of the completion event. From
+  `Disabled_s` to `Run_s` (lines 314 to 316) the frame was aborted in the cycle in `Disabled_s` (line 278) and, with
+  the controller disabled (lines 217 and 229), dropped by `olo_intf_can` at the same clock edge (its lines 335 to 342
+  and 983 to 1006): the completion event comes at the earliest in the first cycle in `Run_s`, together with the first
+  `LinkTx_Ready`, and the dispatch takes the event first.
+- **ocan_link, a stop.** A stopped controller gives `LinkTx_Ready` = '0' (line 283); its frame is aborted and dropped
+  one clock edge later, with its completion event (lines 278 and 229).
+- **ocan_link, the events.** The completion events of both controllers are combined (lines 288 to 290). The
+  controller that is not the one of the active bus never holds a frame, since only that one takes a frame and it
+  changes only after the completion of its frame.
+- **Frames back to back.** The next take needs `Idle_s`, a grant and `Send_s`, at least two clock edges after the
+  completion event, so a `LinkTx_Ready` of the next frame cannot fall into the `Wait_s` of the previous one.
+- **Precondition.** `ocan_link` and `ocan_dispatch` share `Rst`. A reset of the link alone drops a frame without a
+  completion event (`olo_intf_can` line 1072); DS-TX-07 then completes it as aborted.
+
+### 5.2 Upsets
+
+- An upset of `TxState` from `Idle_s` or `Send_s` to `Wait_s`, or a lost completion event, ends by DS-TX-07 in the
+  cycle after the link is ready.
+- An upset of `TxState` from `Idle_s` to `Send_s` sends the last frame again (identifier, DLC and data are kept) and
+  reports `Done` to its owner. Covered by design review; the TMR of the synthesis tool (protection scope of the user
+  guide).
+- An upset of `Hold` passes the last held NMT message once when `HoldBus` is the active bus. Covered by design
+  review.
+- An upset of `Owner` in `Wait_s` sends the completion event to another source; the owner recovers by its own
+  completion time-out (NM-HB-08, TM-TX-07), and a source ignores a completion event that it does not wait for.
 
 ## 6. Ports of ocan_dispatch
 
@@ -120,6 +167,7 @@ The frames are data frames with an 11-bit identifier; `ocan_core` ties `Tx_Ide` 
 | `LinkTx_Id`, `LinkTx_Dlc`, `LinkTx_Data` | Out | 29, 4, 64 | Identifier in bits 28 to 18 (bits 17 to 0 are 0), DLC, data |
 | `LinkTx_Abort` | Out | 1 | Pulse: abort the pending frame |
 | `LinkTx_Done`, `LinkTx_Aborted` | In | 1 | Completion events of `ocan_link` |
+| `LinkTx_Stopped` | In | 1 | The controller of the active bus is stopped by its dominant monitor (`Tx_Stopped` of `ocan_link`) |
 | `Red_ActiveBus`, `Red_Selecting` | In | 1 | Active bus and bus selection process from `ocan_redundancy` |
 | `Nmt_NodeId`, `Nmt_NodeIdValid` | In | 7, 1 | NODE-ID and its validity from `ocan_nmt` |
 | `Nmt_EnaSdo`, `Nmt_EnaPdo`, `Nmt_EnaSync` | In | 1 | Service enables from `ocan_nmt` |
@@ -161,3 +209,10 @@ Byte 0 of every data field is in the top byte (bits 63 to 56), as at `olo_intf_c
 | Request to `LinkTx_Valid` (no frame pending) | 1 clock cycle (grant and frame register in the cycle of the request) |
 | Completion of the link to `Done` or `Aborted` of the owner | 1 clock cycle |
 | Rejected request to `Ready` and `Aborted` | 1 clock cycle |
+| `LinkTx_Ready` in `Wait_s` without a completion event to `Aborted` of the owner | 1 clock cycle |
+| `LinkTx_Stopped` in `Send_s` to `Aborted` of the owner | 1 clock cycle |
+
+`LinkTx_Ready` enters `Out_Ready` of the arbiter and the `Ready` of the sources, so a combinational path runs from
+the registers of `ocan_link` and `olo_intf_can` through the arbiter to the `Ready` of the protocol blocks. It has no
+loop: the `Valid` of the protocol blocks and `LinkTx_Valid` are registers. A system that fails timing on this path
+needs a register stage there.
