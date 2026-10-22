@@ -46,6 +46,7 @@ Tests observe the ports of `ocan_dispatch`, the buses and the model logs only.
 | `test_heartbeat_load` (TC-DS-12) | Bench `network`: all transmit PDOs, the Local Time PDO and the SDO reply pending continuously while M1 and M2 contend with frames of higher and lower priority and M2 sends error frames. NMT error control requested every 1 ms (shortest heartbeat period): each heartbeat is on the bus after at most one frame of each other source | DS-TX-06, DS-TX-01 |
 | `test_cob_id_copies` (TC-DS-13) | One bit of each entry flipped in one copy at runtime: the object is unused from the next cycle, `Err_CobId` pulses once and `Stat_CobIdMismatch` shows the entry; restoring the copy makes it usable again | DS-CP-01, DS-CP-02 |
 | `test_generics` (TC-DS-14) | Configurations `rpdo0` to `rpdo3`, `tpdo0` to `tpdo3` and `no_time`: frames of absent receive objects are not delivered, requests of absent transmit objects complete as aborted | DS-RX-01, DS-TX-04 |
+| `test_tx_completion_grant` (TC-DS-15) | A source requests again while its frame is awaited; the completion event (`Done`, then `Aborted`) comes in a cycle in which the arbiter is free: no `Ready` in the cycle of the completion event, the grant one cycle later, and the new frame is sent | DS-TX-03 |
 
 ## 4. Requirement coverage
 
@@ -67,7 +68,8 @@ Tests observe the ports of `ocan_dispatch`, the buses and the model logs only.
 | DS-BG-01, DS-BG-02 | TC-DS-04 |
 | DS-BG-03, DS-BG-04 | TC-DS-05 |
 | DS-TX-01 | TC-DS-09, TC-DS-12 |
-| DS-TX-02, DS-TX-03 | TC-DS-08 |
+| DS-TX-02 | TC-DS-08 |
+| DS-TX-03 | TC-DS-08, TC-DS-15 |
 | DS-TX-04 | TC-DS-07, TC-DS-10, TC-DS-14 |
 | DS-TX-05 | TC-DS-02, TC-DS-11 |
 | DS-TX-06 | TC-DS-09, TC-DS-12 |

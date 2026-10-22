@@ -142,7 +142,8 @@ begin
             Reset_App      => open,
             Reset_Comm     => open,
             Err_Cs         => open,
-            Err_NodeId     => open
+            Err_NodeId     => open,
+            Err_TxTimeout  => open
         );
 
     i_dispatch : entity work.ocan_dispatch

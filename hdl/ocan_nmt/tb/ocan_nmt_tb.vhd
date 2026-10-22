@@ -78,6 +78,7 @@ architecture sim of ocan_nmt_tb is
     signal Reset_Comm     : std_logic;
     signal Err_Cs         : std_logic;
     signal Err_NodeId     : std_logic;
+    signal Err_TxTimeout  : std_logic;
     signal ErrInj_BitFlip : std_logic_vector(13 downto 0) := (others => '0');
     signal ErrInj_Valid   : std_logic                     := '0';
 
@@ -96,6 +97,7 @@ architecture sim of ocan_nmt_tb is
     signal RejNow    : std_logic;
     signal CplDone   : std_logic := '0';
     signal CplAbort  : std_logic := '0';
+    signal RespBusy  : boolean   := false;  -- a completion is to come
 
     type Byte_a is array (0 to 4095) of std_logic_vector(7 downto 0);
     type Nat_a is array (0 to 4095) of natural;
@@ -116,6 +118,7 @@ architecture sim of ocan_nmt_tb is
     signal ExpRstComm : std_logic;
     signal ExpErrCs   : std_logic;
     signal ExpErrId   : std_logic;
+    signal ExpErrTmo  : std_logic;
     signal ExpTxValid : std_logic;
     signal ExpTxData  : std_logic_vector(7 downto 0);
 
@@ -154,6 +157,7 @@ begin
             Reset_Comm     => Reset_Comm,
             Err_Cs         => Err_Cs,
             Err_NodeId     => Err_NodeId,
+            Err_TxTimeout  => Err_TxTimeout,
             ErrInj_BitFlip => ErrInj_BitFlip,
             ErrInj_Valid   => ErrInj_Valid
         );
@@ -177,10 +181,15 @@ begin
     end process;
 
     -----------------------------------------------------------------------------------------------
-    -- Responder (behaviour of ocan_dispatch at its NMT transmit port)
+    -- Responder (behaviour of ocan_dispatch at its NMT transmit port: one frame at a time)
     -----------------------------------------------------------------------------------------------
-    Grant      <= '1' when Tx_Valid = '1' and not RespHold and not RespRej and VCnt >= RespRdy else '0';
-    RejNow     <= '1' when Tx_Valid = '1' and RespRej and VCnt >= 1 else '0';
+    -- No grant while a completion is to come and none in the cycle of a completion event (DS-TX-03)
+    Grant      <= '1' when Tx_Valid = '1' and not RespHold and not RespRej and not RespBusy and VCnt >= RespRdy and
+                           CplDone = '0' and CplAbort = '0' else
+                  '0';
+    RejNow     <= '1' when Tx_Valid = '1' and RespRej and not RespBusy and VCnt >= 1 and CplDone = '0' and
+                           CplAbort = '0' else
+                  '0';
     Tx_Ready   <= Grant or RejNow;
     Tx_Done    <= CplDone;
     Tx_Aborted <= CplAbort or RejNow;
@@ -225,6 +234,7 @@ begin
             else
                 VCnt <= 0;
             end if;
+            RespBusy <= Left_v >= 0;
         end if;
     end process;
 
@@ -252,11 +262,12 @@ begin
         variable S2_v      : std_logic_vector(13 downto 0) := (others => '0');
         variable IdC_v     : std_logic_vector(6 downto 0)  := (others => '0');
         variable IdN_v     : std_logic_vector(6 downto 0)  := (others => '0');
-        variable Sampled_v : boolean                       := false;
         variable ErrCs_v   : std_logic                     := '0';
+        variable ErrTmo_v  : std_logic                     := '0';
         variable PrevP_v   : natural                       := 0;
-        variable HbRem_v   : natural                       := 0;  -- ticks to the next due heartbeat, 0: none
+        variable HbRem_v   : natural                       := 0;
         variable Tx_v      : Tx_t                          := MIdle;
+        variable TxTicks_v : natural                       := 0;
         variable TxData_v  : std_logic_vector(7 downto 0)  := (others => '0');
         variable TxBoot_v  : boolean                       := false;
         variable BootDue_v : boolean                       := false;
@@ -270,7 +281,6 @@ begin
         variable Due_v     : boolean;
         variable DoRetry_v : boolean;
         variable Cpl_v     : boolean;
-        variable Free_v    : boolean;
         variable Blk_v     : boolean;
         variable Cs_v      : natural;
     begin
@@ -279,15 +289,14 @@ begin
         if Rst = '1' then
             St_v      := MInit;
             InitCnt_v := 0;
-            S1_v      := (others => '0');
-            S2_v      := (others => '0');
             IdC_v     := (others => '0');
             IdN_v     := (others => '0');
-            Sampled_v := false;
             ErrCs_v   := '0';
+            ErrTmo_v  := '0';
             PrevP_v   := 0;
             HbRem_v   := 0;
             Tx_v      := MIdle;
+            TxTicks_v := 0;
             TxBoot_v  := false;
             BootDue_v := false;
             Retry_v   := false;
@@ -303,6 +312,7 @@ begin
             Due_v     := false;
             DoRetry_v := false;
             ErrCs_v   := '0';
+            ErrTmo_v  := '0';
 
             -- Upsets of the copies, visible from the next cycle on
             if ErrInj_Valid = '1' then
@@ -315,7 +325,7 @@ begin
                 Retry_v   := false;
             end if;
 
-            -- NMT state
+            -- NMT state (NM-SM-01 to NM-SM-05, NM-ID-03, NM-ID-04, NM-MS-01 to NM-MS-03)
             case St_v is
                 when MInit =>
                     if InitCnt_v = 1 then
@@ -328,9 +338,8 @@ begin
                 when MResetComm | MWaitId =>
                     if St_v = MResetComm or Tick_Ms = '1' then
                         if SampOk_v then
-                            IdC_v     := S2_v(6 downto 0);
-                            IdN_v     := S2_v(13 downto 7);
-                            Sampled_v := true;
+                            IdC_v := S2_v(6 downto 0);
+                            IdN_v := S2_v(13 downto 7);
                             if MinimalSet_g then
                                 Nxt_v   := MOp;
                                 HbNow_v := true;
@@ -339,8 +348,7 @@ begin
                                 Boot_v := true;
                             end if;
                         else
-                            Sampled_v := false;
-                            Nxt_v     := MWaitId;
+                            Nxt_v := MWaitId;
                         end if;
                     end if;
                 when others =>
@@ -372,7 +380,37 @@ begin
                     end if;
             end case;
 
-            -- Heartbeat: remaining ticks to the next one
+            -- Transmit handshake; a completion and a time-out count for the requests of this cycle
+            Cpl_v := false;
+            if Tx_v = MReq and Tx_Ready = '1' then
+                if Tx_Done = '1' or Tx_Aborted = '1' then
+                    Cpl_v := true;
+                    Tx_v  := MIdle;
+                else
+                    Tx_v      := MWait;
+                    TxTicks_v := 0;
+                end if;
+            elsif Tx_v = MWait then
+                if Tx_Done = '1' or Tx_Aborted = '1' then
+                    Cpl_v := true;
+                    Tx_v  := MIdle;
+                elsif St_v = MResetComm then
+                    -- Reset communication: the taken frame is no longer awaited (NM-HB-06)
+                    Tx_v := MIdle;
+                elsif Tick_Ms = '1' then
+                    TxTicks_v := TxTicks_v + 1;
+                    if TxTicks_v = 256 then
+                        -- Time-out (NM-HB-08)
+                        ErrTmo_v := '1';
+                        Tx_v     := MIdle;
+                    end if;
+                end if;
+            end if;
+            if Cpl_v and TxBoot_v and Tx_Aborted = '1' and not isInit(Nxt_v) and not MinimalSet_g then
+                Retry_v := true;
+            end if;
+
+            -- Heartbeat: remaining ticks to the next one (NM-HB-03 to NM-HB-05), repeated boot-up (NM-HB-07)
             if isInit(Nxt_v) then
                 HbRem_v := 0;
             elsif Boot_v then
@@ -393,44 +431,31 @@ begin
                 if Red_Switched = '1' and Retry_v then
                     DoRetry_v := true;
                     Due_v     := false;
-                    Retry_v   := false;
                 end if;
             end if;
             PrevP_v := P_v;
 
-            -- Transmit handshake
-            Cpl_v := false;
-            if Tx_v = MReq and Tx_Ready = '1' then
-                if Tx_Done = '1' or Tx_Aborted = '1' then
-                    Cpl_v := true;
-                else
-                    Tx_v := MWait;
-                end if;
-            elsif Tx_v = MWait and (Tx_Done = '1' or Tx_Aborted = '1') then
-                Cpl_v := true;
-            end if;
-            if Cpl_v then
-                if TxBoot_v and Tx_Aborted = '1' and not isInit(Nxt_v) and not MinimalSet_g then
-                    Retry_v := true;
-                end if;
-                Tx_v := MIdle;
-            end if;
-            Free_v := Tx_v = MIdle;
-
+            -- Requests: one pending (NM-HB-06); every boot-up request ends a pending repetition (NM-HB-07)
             if Boot_v or DoRetry_v then
-                if Free_v then
+                Retry_v := false;
+                if Tx_v = MIdle then
                     Tx_v     := MReq;
                     TxData_v := x"00";
                     TxBoot_v := true;
                 else
                     BootDue_v := true;
                 end if;
-            elsif BootDue_v and Free_v then
+            elsif TxBoot_v and ErrTmo_v = '1' then
+                Retry_v  := false;
+                Tx_v     := MReq;
+                TxData_v := x"00";
+            elsif BootDue_v and Tx_v = MIdle and not isInit(Nxt_v) then
+                Retry_v   := false;
                 Tx_v      := MReq;
                 TxData_v  := x"00";
                 TxBoot_v  := true;
                 BootDue_v := false;
-            elsif Due_v and Free_v then
+            elsif Due_v and Tx_v = MIdle then
                 Tx_v     := MReq;
                 TxBoot_v := false;
                 if Nxt_v = MStopped then
@@ -455,18 +480,18 @@ begin
             S1_v := Pin_NodeIdCode & Pin_NodeId;
         end if;
 
-        -- Outputs
+        -- Outputs, with the encoding of the specification written as literals (PKG-01)
         Blk_v := BootDue_v or (TxBoot_v and Tx_v /= MIdle);
 
         case St_v is
             when MPreOp =>
-                ExpState <= NmtPreOp_c;
+                ExpState <= "01";
             when MOp =>
-                ExpState <= NmtOp_c;
+                ExpState <= "10";
             when MStopped =>
-                ExpState <= NmtStopped_c;
+                ExpState <= "11";
             when others =>
-                ExpState <= NmtInit_c;
+                ExpState <= "00";
         end case;
 
         if (St_v = MPreOp or St_v = MOp) and not Blk_v then
@@ -481,7 +506,8 @@ begin
         else
             ExpEnaPdo <= '0';
         end if;
-        if Sampled_v and IdN_v = not IdC_v then
+        -- Valid after a valid sample (not in MInit or MWaitId) while the copies are complementary (NM-ID-02)
+        if St_v /= MInit and St_v /= MWaitId and IdN_v = not IdC_v then
             ExpIdValid <= '1';
         else
             ExpIdValid <= '0';
@@ -508,6 +534,7 @@ begin
         end if;
         ExpNodeId <= IdC_v;
         ExpErrCs  <= ErrCs_v;
+        ExpErrTmo <= ErrTmo_v;
         ExpTxData <= TxData_v;
     end process;
 
@@ -544,6 +571,7 @@ begin
             cmp(Reset_Comm, ExpRstComm, "Reset_Comm");
             cmp(Err_Cs, ExpErrCs, "Err_Cs");
             cmp(Err_NodeId, ExpErrId, "Err_NodeId");
+            cmp(Err_TxTimeout, ExpErrTmo, "Err_TxTimeout");
             cmp(Tx_Valid, ExpTxValid, "Tx_Valid");
             if Tx_Valid = '1' then
                 cmp(Tx_Data, ExpTxData, "Tx_Data");
@@ -1229,7 +1257,7 @@ begin
                     waitFor(Ena_Sdo, '1', 50, "enables after the aborted boot-up message");
                     RespAbort <= false;
                     if K = 0 then
-                        wait until rising_edge(Clk) and Tx_Done = '1';
+                        waitFor(Tx_Done, '1', 5 * 16, "heartbeat completed");
                     else
                         clocks(5);
                     end if;
@@ -1248,6 +1276,174 @@ begin
                     end if;
                     clocks(10);
                 end loop;
+
+            -- *** TC-NM-16: no stale repetition of the boot-up message ***
+            elsif run("test_boot_retry_stale") then
+                Cfg_HbTime <= std_logic_vector(to_unsigned(1000, 16));
+
+                for K in 0 to 1 loop
+                    RespRej   <= false;
+                    RespAbort <= false;
+                    RespCpl   <= 3;
+                    if K = 0 then
+                        -- The boot-up request waits for Tx_Ready
+                        RespHold <= true;
+                    else
+                        -- The boot-up message is taken and aborted later
+                        RespHold  <= false;
+                        RespCpl   <= 200;
+                        RespAbort <= true;
+                    end if;
+                    doReset;
+                    waitFor(Tx_Valid, '1', 20, "boot-up request");
+                    clocks(2);
+                    -- Upset of a copy: reset communication and a new boot-up message
+                    ErrInj_BitFlip <= (0 => '1', others => '0');
+                    ErrInj_Valid   <= '1';
+                    wait until rising_edge(Clk);
+                    ErrInj_Valid   <= '0';
+                    waitFor(Reset_Comm, '1', 10, "reset communication after the upset");
+                    clocks(3);
+                    if K = 0 then
+                        -- The old request ends through the reject path in the cycle the new one is registered
+                        RespHold <= false;
+                        RespRej  <= true;
+                        waitFor(RejNow, '1', 10, "reject path");
+                        RespRej  <= false;
+                    else
+                        wait until CplAbort = '1' for 20 us;
+                        check_value(CplAbort, '1', ERROR, "late abort of the old boot-up message");
+                        RespAbort <= false;
+                        RespCpl   <= 3;
+                    end if;
+                    waitFor(Ena_Sdo, '1', 300, "the new boot-up message completed");
+                    clocks(2);
+                    switched;
+                    wait until falling_edge(Clk);
+                    check_value(Tx_Valid, '1', ERROR, "request at the switch");
+                    check_value(Tx_Data, x"7F", ERROR, "heartbeat at the switch, not a stale boot-up message");
+                    clocks(10);
+                end loop;
+
+            -- *** TC-NM-17: boot-up message aborted in the cycle of a bus switch ***
+            elsif run("test_abort_and_switch") then
+                Cfg_HbTime   <= std_logic_vector(to_unsigned(1000, 16));
+                RespAbort    <= true;
+                RespCpl      <= 3;
+                doReset;
+                wait until CplAbort = '1' for 2 us;
+                check_value(CplAbort, '1', ERROR, "abort of the boot-up message");
+                Red_Switched <= '1';
+                wait until rising_edge(Clk);
+                Red_Switched <= '0';
+                RespAbort    <= false;
+                wait until falling_edge(Clk);
+                check_value(Tx_Valid, '1', ERROR, "request at the switch");
+                check_value(Tx_Data, x"00", ERROR, "the boot-up message repeated at once");
+
+            -- *** TC-NM-18: deferred boot-up message and a reset command in one cycle ***
+            elsif run("test_bootdue_reset") then
+                Cfg_HbTime <= std_logic_vector(to_unsigned(2, 16));
+                RespAbort  <= true;
+                RespCpl    <= 3;
+                doReset;
+                waitFor(Ena_Sdo, '1', 50, "enables after the aborted boot-up message");
+                RespAbort  <= false;
+                RespCpl    <= 300;
+                -- A heartbeat is taken; the switch defers the repeated boot-up message
+                waitFor(Tx_Valid, '1', 5 * 16, "heartbeat");
+                switched;
+                C0_v := TxCnt;
+                -- Reset communication in the cycle of the completion of the heartbeat
+                wait until CplDone = '1' for 20 us;
+                check_value(CplDone, '1', ERROR, "completion of the heartbeat");
+                Rx_Valid <= '1';
+                Rx_Cs    <= x"82";
+                RespCpl  <= 3;
+                wait until rising_edge(Clk);
+                Rx_Valid <= '0';
+                wait until falling_edge(Clk);
+                check_value(Tx_Valid, '0', ERROR, "no boot-up request in the cycle of the reset command");
+                waitFor(Reset_Comm, '1', 5, "reset communication");
+                check_value(Tx_Valid, '0', ERROR, "no boot-up request before the sample");
+                -- One boot-up message, then the heartbeats of Pre-operational
+                waitTx(C0_v + 2, 5 * 16, "boot-up message and the next heartbeat");
+                check_value(LogData(C0_v), x"00", ERROR, "boot-up message after the reset communication");
+                check_value(LogData(C0_v + 1), x"7F", ERROR, "then a heartbeat, no second boot-up message");
+
+            -- *** TC-NM-19: command and a due heartbeat in one cycle ***
+            elsif run("test_command_and_heartbeat") then
+                Cfg_HbTime <= std_logic_vector(to_unsigned(1, 16));
+                startNode;
+
+                for K in 0 to 2 loop
+                    wait until Tick_Ms = '1' for 1 us;
+                    check_value(Tick_Ms, '1', ERROR, "tick");
+                    Rx_Valid <= '1';
+                    if K = 0 then
+                        Rx_Cs <= x"01";
+                    elsif K = 1 then
+                        Rx_Cs <= x"02";
+                    else
+                        Rx_Cs <= x"80";
+                    end if;
+                    C0_v     := TxCnt;
+                    wait until rising_edge(Clk);
+                    Rx_Valid <= '0';
+                    waitTx(C0_v + 1, 10, "heartbeat of the tick");
+                    if K = 0 then
+                        check_value(LogData(C0_v), x"05", ERROR, "state of the next cycle: Operational");
+                    elsif K = 1 then
+                        check_value(LogData(C0_v), x"04", ERROR, "state of the next cycle: Stopped");
+                    else
+                        check_value(LogData(C0_v), x"7F", ERROR, "state of the next cycle: Pre-operational");
+                    end if;
+                    clocks(4);
+                end loop;
+
+            -- *** TC-NM-20: completion time-out and reset communication during a wait ***
+            elsif run("test_tx_timeout") then
+                TickPer    <= 4;
+                Cfg_HbTime <= std_logic_vector(to_unsigned(2, 16));
+                startNode;
+                -- A heartbeat without completion: time-out after 256 ticks, then the heartbeats go on. One cycle
+                -- after the change of RespCpl, every later grant takes the long completion.
+                RespCpl <= 3000;
+                wait until rising_edge(Clk);
+                C0_v    := TxCnt;
+                waitTx(C0_v + 1, 20, "heartbeat taken");
+                RespCpl <= 3;
+                N_v     := Cyc;
+                waitFor(Err_TxTimeout, '1', 256 * 4 + 20, "time-out of the heartbeat");
+                check_value(Cyc - N_v >= 255 * 4 and Cyc - N_v <= 256 * 4 + 4, ERROR, "time-out after 256 ticks");
+                waitFor(Tx_Valid, '1', 3 * 4 + 4, "next heartbeat requested after the time-out");
+                waitTx(C0_v + 2, 3000, "next heartbeat taken after the old completion");
+                -- A boot-up message without completion: time-out, the boot-up message again, enables still blocked;
+                -- the bus recovers: the enables return
+                wait until not RespBusy for 100 us;
+                RespCpl <= 3000;
+                C0_v    := TxCnt;
+                doReset;
+                waitTx(C0_v + 1, 20, "boot-up message taken");
+                RespCpl <= 3;
+                waitFor(Err_TxTimeout, '1', 256 * 4 + 20, "time-out of the boot-up message");
+                wait until falling_edge(Clk);
+                check_value(Tx_Valid, '1', ERROR, "boot-up message requested again");
+                check_value(Tx_Data, x"00", ERROR, "boot-up message requested again");
+                check_value(Ena_Sdo, '0', ERROR, "enables blocked until a boot-up message completes");
+                waitFor(Ena_Sdo, '1', 3000, "enables after the completion of the repeated boot-up message");
+                check_value(TxCnt, C0_v + 2, ERROR, "the boot-up message taken twice");
+                -- Reset communication while a heartbeat is awaited: the boot-up request follows the sample at once
+                wait until not RespBusy for 100 us;
+                RespCpl <= 200;
+                C0_v    := TxCnt;
+                waitTx(C0_v + 1, 3 * 4 + 20, "heartbeat taken");
+                RespCpl <= 3;
+                nmt(130);
+                waitFor(Tx_Valid, '1', 6, "boot-up request right after the reset communication");
+                check_value(Tx_Data, x"00", ERROR, "boot-up request");
+                check_value(RespBusy, true, ERROR, "requested while the heartbeat is still awaited");
+                waitFor(Ena_Sdo, '1', 300, "enables after the boot-up message");
 
             -- *** TC-NM-13: minimal set ***
             elsif run("test_minimal_set") then
@@ -1282,6 +1478,47 @@ begin
                 Red_Selecting <= '0';
                 clocks(4);
                 check_value(Stat_State, NmtOp_c, ERROR, "no change of Red_Selecting in Operational");
+                -- Every command specifier in Pre-operational and in the Initialisation
+                Cfg_HbTime <= std_logic_vector(to_unsigned(1000, 16));
+                preopReq;
+
+                for Cs in 0 to 255 loop
+                    nmt(Cs);
+                    wait until falling_edge(Clk);
+                    check_value(Err_Cs, '0', ERROR, "no Err_Cs in Pre-operational");
+                    check_value(Stat_State, NmtPreOp_c, ERROR, "no change in Pre-operational");
+                end loop;
+
+                setPins(0, "1111111");
+                doReset;
+                clocks(10);
+
+                for Cs in 0 to 255 loop
+                    nmt(Cs);
+                    check_value(Stat_State, NmtInit_c, ERROR, "no change in the Initialisation");
+                end loop;
+
+                setPins(NodeId_c, not slv7(NodeId_c));
+                doReset;
+                waitState(NmtOp_c, 20, "Operational after the reset");
+                clocks(10);
+                -- An upset: reset communication, then Operational with a heartbeat at once and no boot-up message
+                C0_v           := TxCnt;
+                ErrInj_BitFlip <= (8 => '1', others => '0');
+                ErrInj_Valid   <= '1';
+                wait until rising_edge(Clk);
+                ErrInj_Valid   <= '0';
+                waitFor(Reset_Comm, '1', 5, "reset communication after the upset");
+                waitState(NmtOp_c, 10, "Operational after the new sample");
+                waitTx(C0_v + 1, 10, "heartbeat at once");
+                check_value(LogData(C0_v), x"05", ERROR, "heartbeat 05h, no boot-up message");
+                -- A bus switch: a heartbeat at once
+                clocks(10);
+                C0_v := TxCnt;
+                switched;
+                clocks(3);
+                check_value(TxCnt, C0_v + 1, ERROR, "heartbeat at once after a switch");
+                check_value(LogData(C0_v), x"05", ERROR, "heartbeat 05h after a switch");
 
             end if;
 

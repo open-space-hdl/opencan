@@ -82,7 +82,9 @@ architecture sim of ocan_nmt_net_tb is
     signal Nmt_TxReady    : std_logic;
     signal Nmt_TxData     : std_logic_vector(7 downto 0);
 
-    signal NmtReqs : natural := 0;  -- NMT error control requests taken by ocan_dispatch
+    signal NmtReqs : natural   := 0;  -- NMT error control requests taken by ocan_dispatch
+    signal TimeEna : time      := 0 ns;  -- last rise of Ena_Sdo
+    signal EnaLast : std_logic := '0';
 
 begin
 
@@ -112,6 +114,10 @@ begin
             if Nmt_TxValid = '1' and Nmt_TxReady = '1' then
                 NmtReqs <= NmtReqs + 1;
             end if;
+            if Ena_Sdo = '1' and EnaLast = '0' then
+                TimeEna <= now;
+            end if;
+            EnaLast <= Ena_Sdo;
         end if;
     end process;
 
@@ -234,7 +240,8 @@ begin
 
                 -- Node guarding request right after a heartbeat: no reply, the next frame is the next heartbeat
                 L_v := Net_v.logCount(0);
-                wait until Nmt_TxValid = '1' and Nmt_TxReady = '1';
+                wait until Nmt_TxValid = '1' and Nmt_TxReady = '1' for 5 ms;
+                check_value(Nmt_TxValid = '1' and Nmt_TxReady = '1', ERROR, "heartbeat before the node guarding request");
                 wait for 300 us;
                 T_v := now;
                 Net_v.txPush(0, canStd(HbId_c, 0, (others => '0'), '1'));
@@ -293,6 +300,49 @@ begin
                 check_value(E_v.Frame.Data(63 downto 56), x"00", ERROR, "the boot-up message completes");
                 checkBeats(I_v + 1, x"7F", 1, "heartbeats after the boot-up message");
 
+            -- *** TC-NM-21: reset communication while a heartbeat waits for its acknowledge ***
+            elsif run("test_net_reset_wait") then
+                Cfg_HbTime <= std_logic_vector(to_unsigned(1, 16));
+                Rst        <= '1';
+                wait for 250 ns;
+                wait until rising_edge(Clk);
+                Rst        <= '0';
+                wait for 5 ms;
+                check_value(Ena_Sdo, '1', ERROR, "boot-up message completed");
+
+                -- No acknowledge: the next heartbeat waits at the link
+                for N in 0 to 1 loop
+                    Cfg_v     := TbNodeCfgInit_c;
+                    Cfg_v.Ack := false;
+                    Net_v.setCfg(N, Cfg_v);
+                end loop;
+
+                wait until Nmt_TxValid = '1' and Nmt_TxReady = '1' for 3 ms;
+                check_value(Nmt_TxValid = '1' and Nmt_TxReady = '1', ERROR, "heartbeat taken");
+                wait for 300 us;
+                -- Reset communication of M1 (acknowledged by the node): the node requests the boot-up message
+                nmtM1(130);
+                wait for 500 us;
+                check_value(Ena_Sdo, '0', ERROR, "enables blocked while the boot-up message waits");
+                -- The acknowledge returns: the heartbeat completes, then the boot-up message is sent
+                L_v   := Net_v.logCount(0);
+                Cfg_v := TbNodeCfgInit_c;
+                Net_v.setCfg(1, Cfg_v);
+                wait for 3 ms;
+                I_v   := nextDut(L_v);
+                T_v   := 0 ns;
+
+                while I_v >= 0 loop
+                    E_v := Net_v.logGet(0, I_v);
+                    if E_v.Frame.Data(63 downto 56) = x"00" and T_v = 0 ns then
+                        T_v := E_v.T;
+                    end if;
+                    I_v := nextDut(I_v + 1);
+                end loop;
+
+                check_value(T_v > 0 ns, ERROR, "boot-up message on the bus");
+                check_value(Ena_Sdo, '1', ERROR, "enables after the boot-up message");
+                check_value(TimeEna > T_v, ERROR, "the enables return only after the boot-up message is on the bus");
             end if;
 
         end loop;

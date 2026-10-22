@@ -100,6 +100,13 @@ Sources and their requester bits at `olo_base_arb_rr` (`Width_g` = 7; the left-m
 | `Wait_s` | '0' | `LinkTx_Done`: `Done` to the owner; `LinkTx_Aborted`: `Aborted` to the owner; to `Idle_s`. The service enable of the owner cleared or the NODE-ID invalid: `LinkTx_Abort` (once) |
 
 The `when others` branch leads to `Idle_s`. The completion events go to the owner of the frame only (DS-TX-03).
+
+**Interface rule.** A source is not granted in the cycle of its own completion event: its requester bit is held
+at '0' while `Done` or `Aborted` of that source is '1'. A request of that source waits one clock cycle in this
+case. At every transmit port `Ready` together with `Aborted` is therefore the reject path only, and `Ready` never
+comes together with `Done`. A protocol block that stops waiting for a taken frame (`ocan_nmt` at a reset
+communication or a time-out) may request again at once; the late completion of the old frame cannot be taken for
+the completion of the new request. The other protocol blocks rely on the same rule.
 The frames are data frames with an 11-bit identifier; `ocan_core` ties `Tx_Ide` and `Tx_Rtr` of `ocan_link` to '0'.
 
 ## 6. Ports of ocan_dispatch

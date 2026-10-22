@@ -51,6 +51,7 @@ entity ocan_nmt_th is
         Reset_Comm     : out   std_logic;
         Err_Cs         : out   std_logic;
         Err_NodeId     : out   std_logic;
+        Err_TxTimeout  : out   std_logic;
         ErrInj_BitFlip : in    std_logic_vector(13 downto 0);
         ErrInj_Valid   : in    std_logic
     );
@@ -101,6 +102,7 @@ begin
             Reset_Comm     => Reset_Comm,
             Err_Cs         => Err_Cs,
             Err_NodeId     => Err_NodeId,
+            Err_TxTimeout  => Err_TxTimeout,
             ErrInj_BitFlip => ErrInj_BitFlip,
             ErrInj_Valid   => ErrInj_Valid
         );

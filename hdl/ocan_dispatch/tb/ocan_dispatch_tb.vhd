@@ -982,6 +982,40 @@ begin
                     check_value(Stat_CobIdMismatch(E), '0', ERROR, "copies equal again");
                 end loop;
 
+            -- *** A request while the own frame is awaited: no grant in the cycle of the completion event ***
+            elsif run("test_tx_completion_grant") then
+
+                for K in 0 to 1 loop
+                    RespAbort <= K = 1;
+
+                    for I in 0 to 2 loop
+                        if I = 0 then
+                            N_v := 0;
+                        elsif I = 1 then
+                            N_v := 5;
+                        else
+                            N_v := 6;
+                        end if;
+                        -- Two requests in a row: the second waits while the first frame is awaited
+                        request(N_v);
+                        request(N_v);
+                        Order_v := 0;
+
+                        loop
+                            wait until falling_edge(Clk);
+                            Order_v := Order_v + 1;
+                            exit when SrcDone(N_v) = '1' or SrcAbort(N_v) = '1' or Order_v > 200;
+                        end loop;
+
+                        check_value(SrcDone(N_v) = '1' or SrcAbort(N_v) = '1', ERROR, "completion event of the first frame");
+                        check_value(SrcReady(N_v), '0', ERROR, "no grant in the cycle of the own completion event");
+                        wait until falling_edge(Clk);
+                        check_value(SrcReady(N_v), '1', ERROR, "grant one cycle after the completion event");
+                        waitTx;
+                    end loop;
+
+                end loop;
+
             -- *** Absent objects for the generics ***
             elsif run("test_generics") then
 

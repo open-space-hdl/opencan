@@ -33,8 +33,13 @@ Tests observe the ports of `ocan_nmt`, the buses and the model logs only.
 Checkers that run in every test of the direct bench:
 
 - never a second `Tx_Valid` before the completion of the first request, and `Tx_Data` stable while `Tx_Valid` is '1';
+- the responder behaves like `ocan_dispatch`: one taken frame at a time, no `Tx_Ready` in the cycle of a completion
+  event (DS-TX-03);
 - `Node_IdValid` is never '1' while `Node_Id` differs from the NODE-ID of the last valid sample of the pins;
-- the service enables, `Stat_State` and the events equal the reference model in every cycle.
+- the service enables, `Stat_State`, the events and the requests equal the reference model in every cycle. The model
+  follows the specification at the corners (a boot-up request ends a pending repetition, an abort counts for a switch
+  in the same cycle, no deferred boot-up request in the cycle of a reset command, the time-out) and uses the state
+  encoding of the specification as literals.
 
 ## 3. Test cases
 
@@ -52,9 +57,15 @@ Checkers that run in every test of the direct bench:
 | `test_heartbeat_restart` (TC-NM-10) | P from 0 to 5: a heartbeat at once, then every 5 ticks; from 5 to 3: the next heartbeat 3 ticks after the change; to 0: no more heartbeats. `Red_Switched`: a heartbeat at once and the cycle restarts; with P = 0 and in the Initialisation no heartbeat. A change of P, `Red_Switched` and a tick in one cycle: one request | NM-HB-04, NM-HB-05, NM-IF-06 |
 | `test_request_pending` (TC-NM-11) | The responder holds `Tx_Ready` and the completion for up to 3 P: heartbeats that fall due meanwhile are not requested. A reset communication while a heartbeat is pending: the boot-up request follows in the cycle of the completion, and the enables stay '0' until the boot-up message completes | NM-HB-06, NM-IF-04, NM-SM-04 |
 | `test_abort` (TC-NM-12) | A heartbeat aborted through the reject path and after `Tx_Ready`: not repeated, the next one at its time. A boot-up message aborted: the enables of `PreOp_s` return. At the next `Red_Switched` the boot-up message instead of the heartbeat, also with P = 0, with the enables '0' until it completes; the switch after that requests a heartbeat | NM-HB-07, NM-SM-04 |
-| `test_minimal_set` (TC-NM-13) | Configuration `minimal`: every command specifier in every state changes nothing and gives no `Err_Cs`. The Initialisation ends in `Op_s` without a boot-up message, with a heartbeat (05h) at once. `Red_PreopReq` leads to `PreOp_s`; `Red_Selecting` from '1' to '0' leads back to `Op_s`; a change from '0' to '1' and a change in `Op_s` do nothing. `Stopped_s` is never reached | NM-MS-01, NM-MS-02, NM-MS-03, NM-IF-06 |
+| `test_minimal_set` (TC-NM-13) | Configuration `minimal`: every command specifier in `Op_s`, in `PreOp_s` and in the Initialisation changes nothing and gives no `Err_Cs`. The Initialisation ends in `Op_s` without a boot-up message, with a heartbeat (05h) at once. `Red_PreopReq` leads to `PreOp_s`; `Red_Selecting` from '1' to '0' leads back to `Op_s`; a change from '0' to '1' and a change in `Op_s` do nothing. `Stopped_s` is never reached. An upset of a copy: reset communication, then `Op_s` with a heartbeat at once and no boot-up message. `Red_Switched`: a heartbeat at once | NM-MS-01, NM-MS-02, NM-MS-03, NM-IF-06, NM-ID-04 |
+| `test_boot_retry_stale` (TC-NM-16) | A boot-up request that waits for `Tx_Ready`, and in a second run a taken boot-up message whose abort comes late; a copy upset gives a reset communication and a new boot-up request. The old request ends through the reject path in the cycle the new one is registered, or its late abort is ignored. After the new boot-up message completes, a bus switch requests a heartbeat (7Fh), not a boot-up message | NM-HB-07, NM-HB-06 |
+| `test_abort_and_switch` (TC-NM-17) | The abort of the boot-up message and `Red_Switched` in the same cycle: the boot-up message is requested again in the next cycle | NM-HB-07 |
+| `test_bootdue_reset` (TC-NM-18) | A boot-up message deferred behind a heartbeat (`BootDue`), and a reset communication in the cycle of the completion of the heartbeat: no boot-up request in that cycle and before the sample, one boot-up message after it | NM-HB-06 |
+| `test_command_and_heartbeat` (TC-NM-19) | An NMT command (1, 2, 128) in the cycle of a tick with a due heartbeat (P = 1): the heartbeat carries the state of the next cycle (05h, 04h, 7Fh) | NM-HB-02, NM-SM-02 |
+| `test_tx_timeout` (TC-NM-20) | A heartbeat taken without completion: `Err_TxTimeout` 255 to 256 ticks later, then the next heartbeat is requested and taken after the late completion of the old frame. A boot-up message taken without completion: `Err_TxTimeout`, the boot-up message is requested again at once, the enables stay '0'; when the frames complete, the enables return (the boot-up message taken twice). A reset communication while a heartbeat is awaited: the boot-up request follows the sample at once | NM-HB-08, NM-HB-06, NM-IF-07 |
 | `test_net_bootup` (TC-NM-14) | Bench `network`: the first frame of the node on the bus after the reset is the boot-up message (identifier 700h + NODE-ID, DLC 1, 00h); then a heartbeat every P ms with the state byte. M1 sends start remote node, enter pre-operational, stop remote node and reset communication; the heartbeats follow the state, and a boot-up message follows the reset communication. M1 sends a node guarding request (remote frame 700h + NODE-ID): the node sends no reply, only its next heartbeat at its time | NM-HB-01, NM-HB-02, NM-SM-02, NM-SM-04, NM-IF-04 |
 | `test_net_no_ack` (TC-NM-15) | Bench `network` with the acknowledge of M1 and M2 off: the link repeats the boot-up message, `Stat_State` is "01", the enables stay '0' and no heartbeat is requested for 10 P. M2 turns its acknowledge on: the boot-up message completes, the enables of `PreOp_s` follow, and the heartbeats start | NM-SM-04, NM-HB-06 |
+| `test_net_reset_wait` (TC-NM-21) | Bench `network`: a heartbeat waits for its acknowledge at the link; M1 sends reset communication. The boot-up request waits behind the heartbeat in `ocan_dispatch`; when the acknowledge returns, the heartbeat completes and then the boot-up message is sent. The enables return only after the boot-up message is on the bus (the completion of the heartbeat is not taken for the boot-up message, DS-TX-03) | NM-HB-06, NM-SM-04 |
 
 ## 4. Requirement coverage
 
@@ -66,23 +77,25 @@ Checkers that run in every test of the direct bench:
 | NM-IF-04 | TC-NM-01, TC-NM-11, TC-NM-14 |
 | NM-IF-05 | TC-NM-09 |
 | NM-IF-06 | TC-NM-08, TC-NM-10, TC-NM-13 |
-| NM-IF-07 | TC-NM-01, TC-NM-04, TC-NM-05, TC-NM-06 |
+| NM-IF-07 | TC-NM-01, TC-NM-04, TC-NM-05, TC-NM-06, TC-NM-20 |
 | NM-ID-01 | TC-NM-01, TC-NM-02, TC-NM-03 |
-| NM-ID-02, NM-ID-04 | TC-NM-04 |
+| NM-ID-02 | TC-NM-04 |
+| NM-ID-04 | TC-NM-04, TC-NM-13 |
 | NM-ID-03 | TC-NM-03 |
 | NM-SM-01 | TC-NM-01 |
-| NM-SM-02 | TC-NM-05, TC-NM-07, TC-NM-14 |
+| NM-SM-02 | TC-NM-05, TC-NM-07, TC-NM-14, TC-NM-19 |
 | NM-SM-03 | TC-NM-06, TC-NM-07 |
-| NM-SM-04 | TC-NM-01, TC-NM-05, TC-NM-11, TC-NM-12, TC-NM-14, TC-NM-15 |
+| NM-SM-04 | TC-NM-01, TC-NM-05, TC-NM-11, TC-NM-12, TC-NM-14, TC-NM-15, TC-NM-21 |
 | NM-SM-05 | TC-NM-08 |
 | NM-SM-06 | TC-NM-01, TC-NM-05 |
 | NM-SM-07 | TC-NM-07 |
 | NM-HB-01 | TC-NM-01, TC-NM-14 |
-| NM-HB-02 | TC-NM-09, TC-NM-14 |
+| NM-HB-02 | TC-NM-09, TC-NM-14, TC-NM-19 |
 | NM-HB-03 | TC-NM-09 |
 | NM-HB-04, NM-HB-05 | TC-NM-10 |
-| NM-HB-06 | TC-NM-11, TC-NM-15 |
-| NM-HB-07 | TC-NM-12 |
+| NM-HB-06 | TC-NM-11, TC-NM-15, TC-NM-16, TC-NM-18, TC-NM-20, TC-NM-21 |
+| NM-HB-07 | TC-NM-12, TC-NM-16, TC-NM-17 |
+| NM-HB-08 | TC-NM-20 |
 | NM-MS-01, NM-MS-02, NM-MS-03 | TC-NM-13 |
 
 ## 5. Negative tests
@@ -95,19 +108,29 @@ Checkers that run in every test of the direct bench:
 | Aborted heartbeat and boot-up message | TC-NM-12 |
 | Boot-up message that no node acknowledges | TC-NM-15 |
 | Node guarding request | TC-NM-14 |
+| Stale repetition of the boot-up message, abort and switch in one cycle, reset command with a deferred boot-up message | TC-NM-16, TC-NM-17, TC-NM-18 |
+| Lost completion: time-out | TC-NM-20 |
+| Late completion of an old frame together with a new grant | TC-NM-21 |
 
-## 6. Functional coverage
+## 6. Input space covered by the directed tests
 
-| Coverpoint | Requirements | Bins | Goal |
-| --- | --- | --- | --- |
-| Command specifier x state | NM-SM-02, NM-SM-03 | {1, 2, 128, 129, 130, other} x {`PreOp_s`, `Op_s`, `Stopped_s`, Initialisation} | 100 % |
-| Producer heartbeat time P | NM-HB-03 | 0, 1, 2 to 9, 10 to 999, 1000 to 65534, 65535 | 100 % |
-| NODE-ID sample | NM-ID-01, NM-ID-03 | valid {1, 2 to 63, 64 to 126, 127}; invalid {NODE-ID 0, error in the code, error in the NODE-ID, code equal to the NODE-ID} | 100 % |
-| Same-cycle inputs | NM-SM-05, NM-HB-04, NM-HB-06 | request with each command specifier class; restart with a tick; completion with a due request | 100 % |
+The bench collects no functional coverage. The directed tests cover these classes of the input space, each in a
+named test case:
+
+| Input | Requirements | Classes and test cases |
+| --- | --- | --- |
+| Command specifier x state | NM-SM-02, NM-SM-03 | {1, 2, 128, 129, 130} from every state of `PreOp_s`, `Op_s` and `Stopped_s` (TC-NM-05); every other value in each of these states and every value in the Initialisation (TC-NM-06); every value in every state of the minimal set (TC-NM-13); random sequences (TC-NM-07) |
+| Producer heartbeat time P | NM-HB-03, NM-HB-04 | 0, 1, 2, 7, 1000, 65535 (TC-NM-09); changes 0 to 5, 5 to 3, 3 to 0 (TC-NM-10) |
+| NODE-ID sample | NM-ID-01, NM-ID-03 | every valid NODE-ID 1 to 127 (TC-NM-02); NODE-ID 0, every single-bit error of 16 NODE-IDs, code equal to the NODE-ID, all '0', all '1' (TC-NM-03) |
+| Same-cycle inputs | NM-SM-05, NM-HB-02, NM-HB-04, NM-HB-06, NM-HB-07 | request with each command class (TC-NM-08); restart with a tick (TC-NM-09, TC-NM-10); command with a due heartbeat (TC-NM-19); abort with a switch (TC-NM-17); reset command with a completion (TC-NM-18) |
+| Completion of a request | NM-HB-06 to NM-HB-08 | `Tx_Done`, `Tx_Aborted` after `Tx_Ready`, the reject path (TC-NM-01, TC-NM-12); held `Tx_Ready` and held completion (TC-NM-11); no completion (TC-NM-20) |
 
 ## 7. Not verified at the ports
 
-- The `when others` branches of both state machines cannot be reached from the ports; `docs/coverage.md` justifies
-  them.
+- The `when others` branches of both state machines cannot be reached from the ports. They recover only when the
+  synthesis tool implements the state machines safely (architecture, section 3; protection scope of the user guide).
+- Upsets of registers other than the NODE-ID copies (for example `HbCnt` above P - 1, the state of the transmit
+  handshake) cannot be injected at the ports. The design bounds their effect (the compare `HbCnt` >= P - 1, the
+  completion time-out); the time-out itself is tested by TC-NM-20.
 - Two upsets in the same bit position of both NODE-ID copies keep the copies complementary and give another valid
   NODE-ID. This is outside the single-upset protection of D8 and is not tested.
