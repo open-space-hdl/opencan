@@ -1281,11 +1281,11 @@ begin
             elsif run("test_boot_retry_stale") then
                 Cfg_HbTime <= std_logic_vector(to_unsigned(1000, 16));
 
-                for K in 0 to 1 loop
+                for K in 0 to 2 loop
                     RespRej   <= false;
                     RespAbort <= false;
                     RespCpl   <= 3;
-                    if K = 0 then
+                    if K /= 1 then
                         -- The boot-up request waits for Tx_Ready
                         RespHold <= true;
                     else
@@ -1302,14 +1302,33 @@ begin
                     ErrInj_Valid   <= '1';
                     wait until rising_edge(Clk);
                     ErrInj_Valid   <= '0';
-                    waitFor(Reset_Comm, '1', 10, "reset communication after the upset");
-                    clocks(3);
+                    if K = 2 then
+                        -- The old request ends through the reject path in the cycle of the reset communication, in
+                        -- which the new boot-up message is requested at once
+                        wait until rising_edge(Clk);
+                        RespRej  <= true;
+                        wait until falling_edge(Clk);
+                        check_value(Reset_Comm, '1', ERROR, "reject in the cycle of the reset communication");
+                        check_value(RejNow, '1', ERROR, "reject in the cycle of the reset communication");
+                        wait until rising_edge(Clk);
+                        RespRej  <= false;
+                        RespHold <= false;
+                        wait until falling_edge(Clk);
+                        check_value(Tx_Valid, '1', ERROR, "new boot-up request");
+                        check_value(Tx_Data, x"00", ERROR, "new boot-up request");
+                    else
+                        waitFor(Reset_Comm, '1', 10, "reset communication after the upset");
+                        clocks(3);
+                    end if;
                     if K = 0 then
-                        -- The old request ends through the reject path in the cycle the new one is registered
+                        -- The old request ends through the reject path in the cycle the deferred new one is
+                        -- registered
                         RespHold <= false;
                         RespRej  <= true;
                         waitFor(RejNow, '1', 10, "reject path");
                         RespRej  <= false;
+                    elsif K = 2 then
+                        null;
                     else
                         wait until CplAbort = '1' for 20 us;
                         check_value(CplAbort, '1', ERROR, "late abort of the old boot-up message");
