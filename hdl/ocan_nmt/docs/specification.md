@@ -58,11 +58,11 @@ of the tables names the section of \[CiA301\] that defines the service or protoc
 | --- | --- | --- | --- |
 | NM-HB-01 | At the transition from Initialisation to Pre-operational the node shall request the boot-up message: one data byte 00h. | 7.2.8.2.3, 7.2.8.3.3 | 6.5.3a, 8.3.2a |
 | NM-HB-02 | A heartbeat shall be one data byte with the NMT state at the time of the request: 04h Stopped, 05h Operational, 7Fh Pre-operational. The reserved bit 7 is 0. | 7.2.8.3.2.2 | 6.5.2a, 8.3.3d |
-| NM-HB-03 | With a producer heartbeat time P from 1 to 65535 ms, a heartbeat shall fall due at every P-th millisecond tick, counted from the request of the boot-up message or from a restart of the cycle (NM-HB-04, NM-HB-05); the boot-up message counts as the first heartbeat. A heartbeat that falls due in Pre-operational, Operational or Stopped shall be requested. With P = 0 no heartbeat shall fall due. | 7.2.8.3.2.2, 7.5.2.20 | 6.5.2a, 8.3.3d |
+| NM-HB-03 | With a producer heartbeat time P from 1 to 65535 ms, a heartbeat shall fall due at every P-th millisecond tick, counted from the request of the boot-up message or from a restart of the cycle (NM-HB-04, NM-HB-05); the boot-up message counts as the first heartbeat. A heartbeat that falls due in Pre-operational, Operational or Stopped shall be requested. With P = 0 no heartbeat shall fall due. As a restart is not aligned with the tick, the first heartbeat after a restart falls due between P - 1 and P milliseconds after it; the later ones follow every P milliseconds. | 7.2.8.3.2.2, 7.5.2.20 | 6.5.2a, 8.3.3d |
 | NM-HB-04 | When P changes, the heartbeat cycle shall restart: from 0 to a nonzero value with a heartbeat request at once, otherwise with the next heartbeat at the P-th tick after the change. | 7.2.8.3.2.2 | 6.5.2a |
 | NM-HB-05 | After a bus switch of `ocan_redundancy` the node shall request a heartbeat at once and restart the cycle (P not 0, node not in Initialisation). | none | 8.3.3h |
 | NM-HB-06 | At most one NMT error control request shall be pending. A heartbeat that falls due while a request is pending shall not be requested. A boot-up message that falls due while a heartbeat is pending shall be requested after the completion of that heartbeat. | none | 6.5.2a, 6.5.3a |
-| NM-HB-07 | An aborted heartbeat shall not be repeated. An aborted boot-up message shall be requested again after the next bus switch, in place of the heartbeat of NM-HB-05. | 7.2.8.3.3 | 8.3.2a, 8.3.3h |
+| NM-HB-07 | An aborted heartbeat shall not be repeated. An aborted boot-up message shall be requested again after the next bus switch, in place of the heartbeat of NM-HB-05 and also when P = 0. Until the repeated boot-up message completes, every service enable shall stay cleared, as for the first one (NM-SM-04). | 7.2.8.3.3 | 8.3.2a, 8.3.3h |
 
 ### 2.5 Minimal set
 
@@ -81,14 +81,14 @@ specifications take over.
 
 | Block | Hardware reset | Reset node | Reset communication |
 | --- | --- | --- | --- |
-| `ocan_link` | Both controllers restart, error counters 0, on the bus that `ocan_redundancy` requests | No change | No change |
+| `ocan_link` | Both controllers restart, error counters 0, on the bus that `ocan_redundancy` requests | No change: with valid NODE-ID pins the valid flag stays set, so the link stays enabled and does not integrate again | As reset node |
 | `ocan_dispatch` | No held NMT message, no pending frame | No change; the COB-IDs follow `ocan_od` | No change; the COB-IDs follow `ocan_od` |
-| `ocan_nmt` | Initialisation from the initialising sub-state (NM-SM-01) | Reset application and reset communication sub-states: new NODE-ID sample, boot-up message, new heartbeat cycle | Reset communication sub-state: new NODE-ID sample, boot-up message, new heartbeat cycle |
+| `ocan_nmt` | Initialisation from the initialising sub-state (NM-SM-01) | Reset application and reset communication sub-states: new NODE-ID sample, boot-up message, new heartbeat cycle; with a valid sample the NODE-ID valid flag stays set | Reset communication sub-state: as reset node without the reset application event |
 | `ocan_redundancy` | Requested bus Bdefault, start-up bus selection (RM-SL-01) | No change of the active bus, Ctoggle and the bus selection process (RM-SL-08) | As reset node |
 | `ocan_od` | Every object to its power-on value | Manufacturer-specific and device profile areas, then the communication profile area, to their power-on values; object 2000h is kept | Communication profile area (1000h to 1FFFh) to its power-on values |
 | `ocan_sdo` | No transfer in progress | A transfer in progress ends without a reply | As reset node |
 | `ocan_pdo` | No pending request, SYNC counts cleared | SYNC counts, synchronous receive data not yet applied and pending transmit requests cleared; the data last passed to the user logic are kept | As reset node |
-| `ocan_time` | Local time 0, set flag cleared, no SYNC sample (TM-CT-04) | SYNC count of the Local Time PDO and a pending Local Time PDO cleared; the local time and the SYNC sample are kept (TM-CT-04) | As reset node |
+| `ocan_time` | Local time 0, set flag cleared, no SYNC sample (TM-CT-04) | The SYNC count of the Local Time PDO restarts and a request that waits for the next SYNC is discarded; a request that `ocan_dispatch` has taken completes. The local time, the set flag and the SYNC sample are kept (TM-CT-04, TM-IF-07) | As reset node |
 
 NOTE: The applicability matrix of clause 11 states for reset node that the whole device connected with the CAN
 controller is reset. The core passes this reset to the user logic as the reset application event; the user logic
