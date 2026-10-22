@@ -16,14 +16,14 @@ verification plan are marked as planned.
 | --- | --- | --- | --- | --- | --- |
 | 5.1.1 to 5.1.3 | Topology, bus length, number of devices | Out of scope, board | - | - | Out of scope |
 | 5.2.1, 5.2.2 | Cable, connectors | Out of scope, board | - | - | Out of scope |
-| 5.3.1 to 5.3.6 | Transceiver characteristics | Out of scope, board | LK-DT-01, LK-DT-02, LK-DT-03, LK-DT-04, LK-IF-05, LK-IF-06, LK-IF-07 | TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-16 | Out of scope |
+| 5.3.1 to 5.3.6 | Transceiver characteristics | Out of scope, board | DS-TX-08, LK-DT-01, LK-DT-02, LK-DT-03, LK-DT-04, LK-IF-05, LK-IF-06, LK-IF-07 | TC-DS-18, TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-16, TC-LK-19 | Out of scope |
 | 5.4.1, 5.4.2 | Bit rates | `ocan_link` | LK-PR-02 | TC-LK-04 | Verified |
 | 5.4.3 | Bit timing | `ocan_link` | LK-IF-04, LK-PR-03, LK-PR-04 | TC-LK-04, TC-LK-05 | Verified |
 | 5.5 | Electromagnetic compatibility | Out of scope, board | - | - | Out of scope |
 | 5.6.1 | ISO 11898 compliance of the data link layer | `ocan_link` | DS-RX-02, LK-IF-02, LK-IF-03, LK-PR-01, LK-RX-01, LK-TX-01, LK-TX-02, OD-WR-04 | TC-DS-02, TC-LK-01, TC-LK-03, TC-LK-07, TC-LK-10, TC-LK-17, TC-LK-18, TC-OD-06 (planned), TC-OD-20 (planned) | Verified |
-| 5.6.2 | Fault confinement, error state and counters | `ocan_link` | LK-BS-06, LK-FC-01, LK-FC-02, LK-FC-03, LK-IF-06, LK-PR-01, LK-TX-03, OD-ER-01, OD-IF-08 | TC-LK-01, TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-13, TC-LK-18, TC-OD-12 (planned), TC-OD-13 (planned), TC-OD-14 (planned) | Verified |
+| 5.6.2 | Fault confinement, error state and counters | `ocan_link` | LK-BS-06, LK-FC-01, LK-FC-02, LK-FC-03, LK-IF-06, LK-PR-01, LK-TX-03, OD-ER-01, OD-IF-08 | TC-LK-01, TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-13, TC-LK-15, TC-LK-18, TC-OD-12 (planned), TC-OD-13 (planned), TC-OD-14 (planned) | Verified |
 | 6.1 | Service data objects | `ocan_sdo` | DS-IF-04, DS-RX-01, OD-IF-01 | TC-DS-01, TC-DS-14, TC-OD-01 (planned), TC-OD-16 (planned), TC-OD-20 (planned) | Planned |
-| 6.2 | Process data objects | `ocan_pdo` | DS-IF-04, DS-IF-06, DS-RX-01, DS-TX-03, OD-IF-06 | TC-DS-01, TC-DS-08, TC-DS-14, TC-DS-15, TC-OD-09 (planned) | Planned |
+| 6.2 | Process data objects | `ocan_pdo` | DS-IF-04, DS-IF-06, DS-RX-01, DS-TX-03, DS-TX-07, OD-IF-06 | TC-DS-01, TC-DS-08, TC-DS-14, TC-DS-15, TC-DS-16, TC-DS-17, TC-OD-09 (planned) | Planned |
 | 6.3 | Synchronisation object | `ocan_pdo` | DS-IF-04, DS-RX-01, DS-RX-04, TM-IF-01 | TC-DS-01, TC-DS-14, TC-TM-06, TC-TM-07 | Planned |
 | 6.4 | Emergency object | Not implemented (D9, optional object) | - | - | Not implemented |
 | 6.5.1 | Module control services | `ocan_nmt` | NM-IF-02, NM-IF-07, NM-MS-01, NM-SM-02, NM-SM-06, NM-SM-07 | TC-NM-01, TC-NM-04, TC-NM-05, TC-NM-06, TC-NM-07, TC-NM-13, TC-NM-14, TC-NM-19, TC-NM-20 | Verified |
@@ -35,7 +35,7 @@ verification plan are marked as planned.
 | 6.7 | Device and application profiles | Out of scope, device | - | - | Out of scope |
 | 6.8 | Object dictionary | `ocan_od` | OD-AP-01, OD-AP-04, OD-IF-09, OD-MS-01, OD-OB-01, OD-OB-02, OD-WR-01, OD-WR-02, OD-WR-09 | TC-OD-01 (planned), TC-OD-02 (planned), TC-OD-03 (planned), TC-OD-04 (planned), TC-OD-06 (planned), TC-OD-09 (planned), TC-OD-16 (planned), TC-OD-18 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Planned |
 | 6.9 | Synchronous communications | `ocan_pdo` | - | - | Planned |
-| 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | DS-CP-01, DS-CP-02, DS-IF-02, DS-IF-03, DS-IF-07, DS-RX-01, DS-RX-07, DS-TX-02, LK-BA-04, LK-IF-05, NM-ID-01, NM-ID-02, NM-ID-03, NM-ID-04, NM-IF-01, NM-IF-03, OD-ER-01, OD-IF-02, OD-IF-07, OD-IF-10, OD-IF-12, OD-MS-04, OD-PR-01, OD-PR-02, OD-PR-03, OD-PR-04, OD-RS-03, OD-WR-03, OD-WR-05 | TC-DS-01, TC-DS-02, TC-DS-03, TC-DS-08, TC-DS-13, TC-DS-14, TC-LK-06, TC-LK-09, TC-LK-12, TC-LK-14, TC-NM-01, TC-NM-02, TC-NM-03, TC-NM-04, TC-NM-05, TC-NM-13, TC-OD-05 (planned), TC-OD-06 (planned), TC-OD-09 (planned), TC-OD-11 (planned), TC-OD-12 (planned), TC-OD-13 (planned), TC-OD-14 (planned), TC-OD-15 (planned), TC-OD-17 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Verified |
+| 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | DS-CP-01, DS-CP-02, DS-IF-02, DS-IF-03, DS-IF-07, DS-RX-01, DS-RX-07, DS-TX-02, LK-BA-04, LK-IF-05, NM-ID-01, NM-ID-02, NM-ID-03, NM-ID-04, NM-IF-01, NM-IF-03, OD-ER-01, OD-IF-02, OD-IF-07, OD-IF-10, OD-IF-12, OD-MS-04, OD-PR-01, OD-PR-02, OD-PR-03, OD-PR-04, OD-RS-03, OD-WR-03, OD-WR-05 | TC-DS-01, TC-DS-02, TC-DS-03, TC-DS-08, TC-DS-13, TC-DS-14, TC-DS-18, TC-LK-06, TC-LK-09, TC-LK-12, TC-LK-14, TC-NM-01, TC-NM-02, TC-NM-03, TC-NM-04, TC-NM-05, TC-NM-13, TC-OD-05 (planned), TC-OD-06 (planned), TC-OD-09 (planned), TC-OD-11 (planned), TC-OD-12 (planned), TC-OD-13 (planned), TC-OD-14 (planned), TC-OD-15 (planned), TC-OD-17 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Verified |
 | 7.1.1 | Time code formats | `ocan_time` | TM-CT-01, TM-CT-02, TM-CT-03, TM-IF-05 | TC-TM-01, TC-TM-02, TC-TM-03, TC-TM-05, TC-TM-16, TC-TM-19 | Verified |
 | 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | OD-IF-05, OD-MS-03, OD-OB-01, OD-OB-03, OD-OB-04, TM-CT-01, TM-CT-04, TM-CT-05, TM-IF-03, TM-RX-01, TM-TX-01 | TC-TM-01, TC-TM-04, TC-TM-05, TC-TM-07, TC-TM-11, TC-TM-18, TC-TM-20, TC-OD-01 (planned), TC-OD-02 (planned), TC-OD-08 (planned), TC-OD-09 (planned), TC-OD-10 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Verified |
 | 7.1.3 | Spacecraft UTC objects | Not implemented (D5, optional time code) | - | - | Not implemented |
@@ -46,14 +46,14 @@ verification plan are marked as planned.
 | 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | DS-RX-09, LK-BA-01, LK-BA-02, LK-BA-03, LK-BS-02, LK-BS-03, LK-BS-05, LK-DT-03, LK-IF-01, LK-IF-03, LK-IF-05, LK-RX-02, LK-RX-03, RM-IF-03, RM-SL-06 | TC-DS-04, TC-DS-06, TC-LK-01, TC-LK-02, TC-LK-03, TC-LK-06, TC-LK-07, TC-LK-08, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-17, TC-RM-01, TC-RM-10, TC-RM-15, TC-RM-17, TC-RM-18, TC-RM-19 | Verified |
 | 8.3.1 | Bus redundancy management parameters | `ocan_od` | NM-IF-05, OD-IF-01, OD-IF-04, OD-OB-01, OD-OB-04, OD-WR-03, OD-WR-07, OD-WR-08, RM-HB-03, RM-HB-04, RM-IF-02, RM-SL-10 | TC-NM-09, TC-RM-01, TC-RM-03, TC-RM-04, TC-RM-06, TC-RM-09, TC-RM-12, TC-RM-14, TC-RM-16, TC-RM-23, TC-RM-24, TC-OD-01 (planned), TC-OD-02 (planned), TC-OD-05 (planned), TC-OD-08 (planned), TC-OD-09 (planned), TC-OD-10 (planned), TC-OD-16 (planned), TC-OD-20 (planned) | Planned |
 | 8.3.2 | Start-up procedure | `ocan_redundancy` | LK-BS-01, NM-HB-01, NM-HB-07, NM-SM-01, OD-MS-02, OD-RS-01, OD-RS-02, RM-IF-03, RM-MS-02, RM-SL-01, RM-SL-08, RM-SL-09 | TC-LK-06, TC-LK-09, TC-NM-01, TC-NM-12, TC-NM-14, TC-NM-16, TC-NM-17, TC-RM-01, TC-RM-08, TC-RM-12, TC-RM-13, TC-RM-14, TC-RM-15, TC-RM-16, TC-RM-17, TC-RM-19, TC-RM-20, TC-RM-21, TC-OD-15 (planned), TC-OD-19 (planned) | Verified |
-| 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-IF-01, DS-IF-05, DS-RX-01, DS-RX-06, DS-TX-04, DS-TX-06, LK-BS-04, NM-HB-02, NM-HB-03, NM-HB-05, NM-HB-07, NM-IF-06, NM-MS-03, NM-SM-04, NM-SM-05, OD-IF-04, OD-MS-02, OD-WR-10, RM-HB-02, RM-HB-05, RM-IF-01, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07, RM-SL-09 | TC-DS-01, TC-DS-03, TC-DS-04, TC-DS-05, TC-DS-07, TC-DS-09, TC-DS-10, TC-DS-12, TC-DS-14, TC-LK-07, TC-NM-01, TC-NM-05, TC-NM-08, TC-NM-09, TC-NM-10, TC-NM-11, TC-NM-12, TC-NM-13, TC-NM-14, TC-NM-15, TC-NM-16, TC-NM-17, TC-NM-19, TC-NM-21, TC-RM-01, TC-RM-02, TC-RM-03, TC-RM-04, TC-RM-05, TC-RM-07, TC-RM-08, TC-RM-09, TC-RM-10, TC-RM-11, TC-RM-12, TC-RM-13, TC-RM-14, TC-RM-15, TC-RM-16, TC-RM-17, TC-RM-18, TC-RM-19, TC-RM-20, TC-RM-22, TC-RM-23, TC-RM-24, TC-RM-25, TC-OD-08 (planned), TC-OD-09 (planned), TC-OD-11 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Verified |
+| 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-IF-01, DS-IF-05, DS-RX-01, DS-RX-06, DS-TX-04, DS-TX-06, DS-TX-08, LK-BS-04, NM-HB-02, NM-HB-03, NM-HB-05, NM-HB-07, NM-IF-06, NM-MS-03, NM-SM-04, NM-SM-05, OD-IF-04, OD-MS-02, OD-WR-10, RM-HB-02, RM-HB-05, RM-IF-01, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07, RM-SL-09 | TC-DS-01, TC-DS-03, TC-DS-04, TC-DS-05, TC-DS-07, TC-DS-09, TC-DS-10, TC-DS-12, TC-DS-14, TC-DS-18, TC-LK-07, TC-NM-01, TC-NM-05, TC-NM-08, TC-NM-09, TC-NM-10, TC-NM-11, TC-NM-12, TC-NM-13, TC-NM-14, TC-NM-15, TC-NM-16, TC-NM-17, TC-NM-19, TC-NM-21, TC-RM-01, TC-RM-02, TC-RM-03, TC-RM-04, TC-RM-05, TC-RM-07, TC-RM-08, TC-RM-09, TC-RM-10, TC-RM-11, TC-RM-12, TC-RM-13, TC-RM-14, TC-RM-15, TC-RM-16, TC-RM-17, TC-RM-18, TC-RM-19, TC-RM-20, TC-RM-22, TC-RM-23, TC-RM-24, TC-RM-25, TC-OD-08 (planned), TC-OD-09 (planned), TC-OD-11 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Verified |
 | 9.1 | COB-ID assignment, minimal set | `ocan_nmt` | DS-RX-03, DS-TX-02, NM-IF-01 | TC-DS-02, TC-DS-08, TC-NM-01, TC-NM-02 | Verified |
 | 9.2 | Object dictionary, minimal set | `ocan_od` | OD-MS-01, OD-MS-03 | TC-OD-19 (planned) | Planned |
 | 9.3 | Minimal set CANopen objects | `ocan_pdo` | DS-RX-08, OD-MS-02, OD-MS-05 | TC-DS-07, TC-OD-19 (planned), TC-OD-21 (planned) | Planned |
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | OD-IF-06, OD-MS-02, OD-WR-06 | TC-OD-07 (planned), TC-OD-09 (planned), TC-OD-19 (planned), TC-OD-20 (planned) | Planned |
 | 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | NM-MS-01, NM-MS-02, NM-MS-03, RM-MS-02, RM-SL-05 | TC-NM-13, TC-RM-01, TC-RM-09, TC-RM-15, TC-RM-16, TC-RM-17, TC-RM-25 | Verified |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | OD-MS-02 | TC-OD-19 (planned) | Planned |
-| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03 | TC-DS-02, TC-DS-08 | Planned |
+| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03 | TC-DS-02, TC-DS-08, TC-DS-18 | Planned |
 | 9.4.10 | Minimal set authorized objects | `ocan_od` | OD-MS-01, OD-MS-03 | TC-OD-19 (planned) | Planned |
 | 9.5 | Free COB-ID | `ocan_dispatch` | DS-TX-05, OD-WR-05 | TC-DS-02, TC-DS-11, TC-OD-06 (planned), TC-OD-20 (planned) | Verified |
 | 10.1 to 10.5 | Connectors and pin assignments | Out of scope, board | - | - | Out of scope |
@@ -68,7 +68,7 @@ reference included). A module without a testbench has planned test cases only.
 
 | Module | Requirements | Verified by a test case | Planned in the verification plan | Without a test case |
 | --- | --- | --- | --- | --- |
-| `ocan_dispatch` | 29 | 29 | 0 | - |
+| `ocan_dispatch` | 31 | 31 | 0 | - |
 | `ocan_link` | 34 | 34 | 0 | - |
 | `ocan_nmt` | 29 | 29 | 0 | - |
 | `ocan_od` | 43 | 0 | 43 | - |
@@ -76,5 +76,5 @@ reference included). A module without a testbench has planned test cases only.
 | `ocan_redundancy` | 24 | 24 | 0 | - |
 | `ocan_time` | 28 | 28 | 0 | - |
 
-Requirements: 188; without a test case in a module with a testbench or a verification plan:
+Requirements: 190; without a test case in a module with a testbench or a verification plan:
 0; test cases of modules with a testbench not run by a testbench: 0.

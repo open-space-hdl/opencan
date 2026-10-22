@@ -11,7 +11,8 @@ instances of `olo_intf_can` (generate on `BusAccess_g`). Everything runs in `Clk
 synchronisers of `olo_intf_can` (`SyncStages_g`, `SyncTmr_g` = true).
 
 Indices: the signals of a bus (`Can_*`, `Rx_*`) have index 0 for bus A and 1 for bus B. The signals of a controller
-(`Stat_*`, `Err_*`, `Ctrl_Reenable`, `ErrInj_TxDominant`) have index 0 for controller 0 and 1 for controller 1.
+(`Stat_*`, `Err_*`, `Ctrl_Reenable`, `ErrInj_TxDominant`, `ErrInj_StopFlip`) have index 0 for controller 0 and 1
+for controller 1.
 Controller 0 is the only controller with selective bus access and the controller of bus A with parallel bus access.
 Controller 1 exists with parallel bus access only, on bus B. Without it, its status outputs are constant: counts 0,
 error active, bus not idle, no events.
@@ -56,7 +57,8 @@ outputs of the inactive bus are recessive in every state, so a listen-only contr
 - `Ctrl_Enable` = '0' leads from every state to `Disabled_s` and clears the stopped flags of LK-6 (LK-DT-02).
 - `Tx_Abort` is held during `Abort_s`. `olo_intf_can` drops a pending frame that is not on the bus at once. A frame
   that is on the bus completes (`Tx_Done`) or is dropped after its attempt (`Tx_Aborted`). "No frame pending" is the
-  `Tx_Ready` of the active controller.
+  `Tx_Ready` of the active controller. The wait in `Abort_s` is therefore bounded by one frame on the bus and its
+  error frame (LK-TX-02); a bus-off controller is not on the bus and drops its frame at once.
 - In `Disabled_s` the controllers are disabled and `Tx_Abort` is set. A frame that was pending at the disable is
   dropped and reported with `Tx_Aborted`, so it is never sent after the next enable (section 5 of the
   [specification](specification.md)).
@@ -82,6 +84,9 @@ an event in the same cycle (LK-RX-02). There is no back pressure and no buffer (
 controller in `Run_s` while it is not stopped, and '0' otherwise (LK-TX-01, LK-DT-03). `Tx_Done`, `Tx_Aborted` and
 `Tx_ArbLost` are the OR of both controllers: only the active controller can have a pending frame, because the
 sequencer aborts it before the active bus changes. `Tx_Abort` of the user goes to the active controller in `Run_s`.
+`Tx_Stopped` is the stop state of the controller of the active bus (section 6); `ocan_dispatch` withdraws a frame
+that the link has not taken while it is '1' (LK-IF-06, DS-TX-08). From the cycle after a take until the cycle of its
+completion event `Tx_Ready` is '0' (architecture of `ocan_dispatch`, section 5.1).
 
 ## 6. Dominant monitor (LK-6)
 
@@ -92,11 +97,19 @@ One monitor per controller observes `TxInt(c)`, the transmit bit of the controll
 - a quantum counter of 1 + `Cfg_Tseg1` + `Cfg_Tseg2` quanta per bit;
 - a bit counter up to `DominantLimit_g`.
 
-All three restart when `TxInt(c)` is recessive. When the bit counter reaches `DominantLimit_g`, the monitor sets
-`Stopped(c)`, pulses `Err_DomTimeout(c)` and requests the abort of a pending frame of the controller (LK-DT-01). With
-`Stopped(c)`, the controller is disabled (`Cfg_Enable` = '0') and `Live(c)` is false, so its bus outputs are
-recessive and its transmit enable is '0'. `Stat_DomTimeout(c)` is `Stopped(c)`. A pulse on `Ctrl_Reenable(c)` or the
-state `Disabled_s` clears it (LK-DT-02).
+All three restart when `TxInt(c)` is recessive. While the bit counter is at or above `DominantLimit_g` and the
+controller is not stopped, the monitor stops it, pulses `Err_DomTimeout(c)` and requests the abort of a pending frame
+of the controller (LK-DT-01). The compare is `>=`: a bit counter above the limit after an upset, and a transmit bit
+that is still dominant after a release or a re-enable, stop the controller at once. A stopped controller is disabled
+(`Cfg_Enable` = '0') and `Live(c)` is false, so its bus outputs are recessive and its transmit enable is '0'. A pulse
+on `Ctrl_Reenable(c)` or the state `Disabled_s` releases it (LK-DT-02).
+
+The stop state is held as `Stopped(c)` and its complement `StoppedN(c)`; the controller is stopped only while
+`Stopped(c)` = '1' and `StoppedN(c)` = '0' (`Stop(c)`). Copies that are equal, after an upset of either one, release
+the controller and are set to the released state in the next cycle, so that a single upset never stops a
+controller. A controller whose transmit bit is still dominant is stopped again in the cycle after the release, with
+`Err_DomTimeout(c)` (LK-DT-02). `Stat_DomTimeout(c)` is `Stop(c)`. In a cycle with `ErrInj_StopFlip(c)` = '1'
+`StoppedN(c)` is inverted in the register (LK-IF-07).
 
 No multiplier is needed: the counters follow the bit timing inputs, which are static while the link is enabled. The
 accuracy is one bit time, which does not matter against the margin of the limit (specification, section 5).
@@ -115,6 +128,7 @@ accuracy is one bit time, which does not matter against the margin of the limit 
 | `Tx_Id`, `Tx_Ide`, `Tx_Rtr`, `Tx_Dlc`, `Tx_Data` | In | 29, 1, 1, 4, 64 | 0 | Frame to send, as at `olo_intf_can` (standard identifier in bits 28 to 18, byte 0 in bits 63 to 56) |
 | `Tx_Abort` | In | 1 | '0' | Pulse: abort the pending frame |
 | `Tx_Done`, `Tx_Aborted`, `Tx_ArbLost` | Out | 1 | - | Events of the pending frame |
+| `Tx_Stopped` | Out | 1 | - | The controller of the active bus is stopped by its dominant monitor |
 | `Rx_Valid` | Out | 2 | - | Event per bus: a frame was received on bus A (0) or bus B (1) |
 | `Rx_Id`, `Rx_Ide`, `Rx_Rtr`, `Rx_Dlc`, `Rx_Data` | Out | 58, 2, 2, 8, 128 | - | Frame fields per bus (bus b in slice b); valid with `Rx_Valid(b)` |
 | `Stat_ActiveBus`, `Stat_Switching` | Out | 1 | - | Active bus; '1' during a bus switch |
@@ -123,6 +137,7 @@ accuracy is one bit time, which does not matter against the margin of the limit 
 | `Err_Bit`, `Err_Stuff`, `Err_Crc`, `Err_Form`, `Err_Ack` | Out | 2 | - | Error events per controller, as at `olo_intf_can` |
 | `Err_DomTimeout` | Out | 2 | - | Event per controller: dominant timeout |
 | `ErrInj_TxDominant` | In | 2 | "00" | **Test input.** '1' forces the transmit bit of the controller dominant ahead of the dominant monitor (LK-IF-07). A system ties it to "00" or drives it in test only |
+| `ErrInj_StopFlip` | In | 2 | "00" | **Test input.** '1' inverts the complement of the stop state of the controller (LK-IF-07, LK-DT-02). A system ties it to "00" |
 | `Can_Tx`, `Can_TxEn` | Out | 2 | - | Per bus: transmit bit to the transceiver ('1' recessive) and its transmit enable |
 | `Can_Rx` | In | 2 | "11" | Per bus: receive bit from the transceiver ('1' recessive) |
 
@@ -144,11 +159,15 @@ accuracy is one bit time, which does not matter against the margin of the limit 
 | Bus switch with a frame on the bus | Up to the end of the frame or of its error frame on the old bus, then as above |
 | Enable to the first bit | 1 clock cycle, then 11 recessive bits of integration |
 | Dominant timeout | `DominantLimit_g` bit times, plus at most one bit time, after the transmit bit became dominant |
+| Release by unequal stop state copies, the transmit bit still dominant, to the next stop | 1 clock cycle |
 
 ## 10. Integration notes
 
 - `ErrInj_TxDominant` is a test input: tie it to "00" in a system, or drive it from a test interface only. It forces
-  a bus dominant for up to `DominantLimit_g` bit times before the monitor releases it.
+  a bus dominant for up to `DominantLimit_g` bit times before the monitor releases it. `ErrInj_StopFlip` is a test
+  input as well; tie it to "00".
+- `Tx_Stopped` goes to `LinkTx_Stopped` of `ocan_dispatch`. `Stat_DomTimeout` is a state that the integrator
+  watches: a stopped controller stays stopped until `Ctrl_Reenable` or a disable of the link.
 - `Can_TxEn` drives the transmit enable of an ISO 11898-2 transceiver (standby or silent pin through the polarity of
   the board) or gates the driver enable of an RS-485 transceiver, whose DI and DE take the inverted `Can_Tx` (clause
   5.3.6a, on the board).

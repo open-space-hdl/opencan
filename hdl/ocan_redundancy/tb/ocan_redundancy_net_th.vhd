@@ -109,6 +109,7 @@ architecture sim of ocan_redundancy_net_th is
     signal LkAbort    : std_logic;
     signal LkDone     : std_logic;
     signal LkAborted  : std_logic;
+    signal LkStopped  : std_logic;
     signal RxValid    : std_logic_vector(1 downto 0);
     signal RxId       : std_logic_vector(57 downto 0);
     signal RxIde      : std_logic_vector(1 downto 0);
@@ -235,6 +236,7 @@ begin
             LinkTx_Abort       => LkAbort,
             LinkTx_Done        => LkDone,
             LinkTx_Aborted     => LkAborted,
+            LinkTx_Stopped     => LkStopped,
             Red_ActiveBus      => ActBus,
             Red_Selecting      => Selecting,
             Nmt_NodeId         => NodeId,
@@ -297,6 +299,7 @@ begin
             Tx_Done         => LkDone,
             Tx_Aborted      => LkAborted,
             Tx_ArbLost      => open,
+            Tx_Stopped      => LkStopped,
             Rx_Valid        => RxValid,
             Rx_Id           => RxId,
             Rx_Ide          => RxIde,

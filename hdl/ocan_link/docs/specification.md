@@ -30,8 +30,8 @@ also reports the error state and the error counters of every controller.
 | LK-IF-03 | The link shall pass every frame received on a bus (identifier, IDE, RTR, DLC, eight data bytes) as a one-cycle event of that bus, without back pressure. | 5.6.1a, 8.2.2a |
 | LK-IF-04 | The link shall take the bit timing configuration (prescaler, PROP_SEG + PHASE_SEG1, PHASE_SEG2, SJW) as inputs common to all controllers. The configuration is applied while the link is disabled and is static while it is enabled. | 5.4.3a, 5.4.3d |
 | LK-IF-05 | The link shall take an enable input, the requested active bus, a bus-off recovery request and, per controller, a re-enable request after a dominant timeout. | 6.10f, 8.2.3a, 5.3.6b |
-| LK-IF-06 | The link shall provide the active bus and a busy indication while a bus switch is in progress. Per controller it shall provide the transmit and receive error counts, the fault confinement state (error active, error passive, bus off), the bus idle state, the error events (bit, stuff, CRC, form, acknowledgement), and the dominant timeout as an event and as a state. | 5.6.2a, 5.6.2b, 5.6.2c, 5.3.6b |
-| LK-IF-07 | The link shall have a fault injection test input per controller, inactive by default, that forces the transmit output of the controller dominant ahead of the dominant monitor. | 5.3.6b |
+| LK-IF-06 | The link shall provide the active bus and a busy indication while a bus switch is in progress. Per controller it shall provide the transmit and receive error counts, the fault confinement state (error active, error passive, bus off), the bus idle state, the error events (bit, stuff, CRC, form, acknowledgement), and the dominant timeout as an event and as a state; and, with the transmit handshake, the stop state of the controller of the active bus. | 5.6.2a, 5.6.2b, 5.6.2c, 5.3.6b |
+| LK-IF-07 | The link shall have a fault injection test input per controller, inactive by default, that forces the transmit output of the controller dominant ahead of the dominant monitor, and a second one, inactive by default, that inverts the complement of the stop state of the controller (LK-DT-02). | 5.3.6b |
 
 ### 2.2 Bus access (LK-1, LK-2)
 
@@ -91,7 +91,7 @@ also reports the error state and the error counters of every controller.
 | ID | Requirement | ECSS |
 | --- | --- | --- |
 | LK-DT-01 | When the transmit output of a controller has been dominant for more than `DominantLimit_g` bit times of the configured bit timing, the link shall set that transmit output recessive and its transmit enable inactive, disable the controller, abort its pending frame and raise the dominant timeout event. | 5.3.6b |
-| LK-DT-02 | A controller stopped by a dominant timeout shall stay disabled, with its transmit output recessive, until its re-enable request or until the link is disabled and enabled again. The dominant timeout state is set while it is stopped. | 5.3.6b |
+| LK-DT-02 | A controller stopped by a dominant timeout shall stay disabled, with its transmit output recessive, until its re-enable request or until the link is disabled and enabled again. The dominant timeout state is set while it is stopped. The stop state of each controller shall be held as a value and its complement. Values that are not complementary shall release the controller, so that a single upset does not stop it; a controller whose transmit output is still dominant is stopped again by LK-DT-01. | 5.3.6b |
 | LK-DT-03 | While the controller of the active bus is stopped, the link shall take no frame to send. A bus switch shall remain possible; with parallel bus access the stopped controller does not take part in it until it is re-enabled. | 5.3.6b, 8.2.3a |
 | LK-DT-04 | No dominant sequence that `olo_intf_can` drives in operation, including its reaction to bit errors during its own error flags, shall reach the limit at the default `DominantLimit_g`. | 5.3.6b |
 
@@ -105,6 +105,7 @@ also reports the error state and the error counters of every controller.
 | Request for the other bus during a bus switch | LK-3 | Taken after the running switch |
 | Enable removed during a bus switch | LK-3 | Controllers disabled; the switch ends; on the next enable the active bus is the requested bus |
 | Transmit output dominant for more than `DominantLimit_g` bit times (stuck controller, upset) | LK-6 | Transmit output recessive, transmit enable inactive, controller disabled, pending frame aborted, event and state until the re-enable request |
+| Stop state and its complement not complementary (upset) | LK-6 | Controller released; stopped again by LK-DT-01 if its transmit output is still dominant |
 
 ## 4. Configuration parameters
 
