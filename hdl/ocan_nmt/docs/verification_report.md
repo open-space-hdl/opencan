@@ -81,13 +81,15 @@ made a test fail:
 | Minimal set: no return to Operational at the end of the bus selection | TC-NM-13 |
 | NODE-ID sampled in every cycle of `WaitId_s` instead of at the tick | TC-NM-03 |
 | `ocan_dispatch`: grant in the cycle of the own completion event | TC-NM-21, and TC-DS-15 of `ocan_dispatch`; each alone |
-| Heartbeat compare `HbCnt` = P - 1 instead of >= P - 1 | Not detected |
+| Heartbeat compare `HbCnt` = P - 1 instead of >= P - 1 | Not detected; covered by design review |
 
 The compare with >= differs from = only when `HbCnt` is above P - 1, which needs an upset of the counter that the
-ports cannot inject (verification plan, section 7); the fault is not detectable by design and the compare is kept for
-the recovery. The direct bench answers the handshake with a responder, so the fault of `ocan_dispatch` is detected in
-the network bench, where `ocan_dispatch` is the real block: without the guard the completion of the awaited heartbeat
-is taken for the boot-up message, and the enables return before the boot-up message is on the bus.
+ports cannot inject (verification plan, section 7). The compare is kept for the recovery from such an upset and is
+covered by design review, as the `when others` recovery of both state machines is.
+
+The direct bench answers the handshake with a responder, so the fault of `ocan_dispatch` is detected in the network
+bench, where `ocan_dispatch` is the real block: without the guard the completion of the awaited heartbeat is taken
+for the boot-up message, and the enables return before the boot-up message is on the bus.
 
 The fault "repetition not ended by a direct boot-up request" was first not detected: TC-NM-16 ended the old
 request only after the new boot-up request had been deferred, where the deferred request clears the repetition. A
