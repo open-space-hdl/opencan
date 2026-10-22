@@ -7,8 +7,9 @@
 - `direct`: the bench drives the SYNC and Spacecraft Time PDO events, the configuration, the Local SCET Set writes,
   the user requests and the reset communication event cycle by cycle, and answers the transmit handshake like
   `ocan_dispatch`. A reference model of the time block, written from the specification, computes the local time of
-  every cycle as the last setting plus floor(n * 2^F / f) in closed form (in double precision, which is exact for
-  n < 2^28 cycles since n * 2^F stays below 2^52), and predicts the samples, the frames and the events. This bench checks the exact rate, the settings and the triggers.
+  every cycle as the last setting plus floor(n * 2^F / f) in closed form (in double precision, exact for fewer than
+  2^28 cycles, since the product of n and 2^F then stays below 2^52), and predicts the samples, the frames and the
+  events. This bench checks the exact rate, the settings and the triggers.
 - `network`: `ocan_time` with `ocan_dispatch`, `ocan_link` and the CAN network model of `tb/` (see the
   [verification plan of ocan_link](../../ocan_link/docs/verification_plan.md)). A model node acts as SYNC producer and
   time producer. This bench shows the byte order on the bus and the latency of the SYNC sample on both buses.

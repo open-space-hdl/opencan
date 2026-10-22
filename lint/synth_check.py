@@ -40,6 +40,12 @@ def configs():
     for minimal in ("false", "true"):
         cfg.append(("ocan_nmt", {"MinimalSet_g": minimal}, None))
         cfg.append(("ocan_redundancy", {"MinimalSet_g": minimal}, None))
+    for fine in (0, 1, 23, 24):
+        cfg.append(("ocan_time", {"FineBits_g": str(fine)}, None))
+    for freq in (1000000, 2147483647):
+        cfg.append(("ocan_time", {"ClkFrequency_g": str(freq)}, None))
+    cfg.append(("ocan_time", {"FineBits_g": "0", "ClkFrequency_g": "2147483647"}, None))
+    cfg.append(("ocan_time", {"FineBits_g": "0", "ClkFrequency_g": "1000000"}, None))
     return cfg
 
 
