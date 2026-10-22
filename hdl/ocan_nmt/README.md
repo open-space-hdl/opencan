@@ -6,3 +6,4 @@ the node control services and the service enables (NM-2), and the boot-up messag
 | Document | Content |
 | --- | --- |
 | [specification.md](docs/specification.md) | Requirements |
+| [architecture.md](docs/architecture.md) | Blocks, ports, state machines |
