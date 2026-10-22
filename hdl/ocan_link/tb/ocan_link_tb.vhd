@@ -979,6 +979,8 @@ begin
                 reenable(1);
                 wait for 15 * Bit_v;
                 check_value(Can_TxEn(1), '1', ERROR, "controller 1 re-enabled");
+                check_value(Stat_DomTimeout, "01", ERROR, "controller 0 still stopped");
+                check_value(Tx_Stopped, '0', ERROR, "stop state of the re-enabled controller of the active bus");
                 sendWait(canStd(16#2CC#, 1, x"CC00000000000000"));
                 wait for 15 * Bit_v;
                 check_value(seenId(2, canStd(16#2CC#, 0).Id), true, ERROR, "frame on bus B");
