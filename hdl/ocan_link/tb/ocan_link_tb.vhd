@@ -1016,9 +1016,20 @@ begin
                 ErrInj_StopFlip(0)   <= '1';
                 wait until rising_edge(Clk);
                 ErrInj_StopFlip(0)   <= '0';
-                clocks(2);
-                check_value(Stat_DomTimeout(0), '0', ERROR, "released by the disagreement");
+                wait until falling_edge(Clk);
+                check_value(Stat_DomTimeout(0), '0', ERROR, "released in the cycle of the disagreement");
                 check_value(Tx_Stopped, '0', ERROR, "stop state of the active bus after the release");
+                -- A second disagreement after the release: never stopped
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0) <= '1';
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0) <= '0';
+
+                for I in 1 to 4 loop
+                    wait until falling_edge(Clk);
+                    check_value(Stat_DomTimeout(0), '0', ERROR, "not stopped by a second disagreement");
+                end loop;
+
                 wait for 15 * Bit_v;
                 sendWait(canStd(16#2D2#, 1, x"D200000000000000"));
                 check_value(CntDomErr(0), 1, ERROR, "one timeout event so far");
