@@ -27,8 +27,10 @@ Per bus a counter `PresMs(b)` (16 bits) and a flag `Present(b)` (`Stat_HbPresent
 | --- | --- | --- |
 | `Cfg_HbTime` = 0 | 0 | '0' |
 | Master heartbeat on bus b | 0 | '1' |
-| `Tick_Ms`, `Present(b)` = '1' and `PresMs(b)` = `Cfg_HbTime` - 1 | 0 | '0' |
+| `Tick_Ms`, `Present(b)` = '1' and `PresMs(b)` >= `Cfg_HbTime` - 1 | 0 | '0' |
 | `Tick_Ms` and `Present(b)` = '1' | `PresMs(b)` + 1 | '1' |
+
+The compare with >= also clears the presence at the next tick when `Cfg_HbTime` is lowered below the running count.
 
 ### 2.3 Timer
 
@@ -42,9 +44,10 @@ as 1 when it is 0 (RM-HB-04); C is `Cfg_HbTime`.
 | `TmrPer` | 8 | Consumer heartbeat times elapsed, 0 to T - 1 |
 | `HbTimeReg`, `TtoggleReg` | 16, 8 | `Cfg_HbTime` and `Cfg_Ttoggle` of the previous cycle |
 
-At `Tick_Ms` with C /= 0, while the state is `Monitor_s`, `Select_s` or `Switch_s`: when `TmrMs` = C - 1, `TmrMs`
+At `Tick_Ms` with C /= 0, while the state is `Monitor_s`, `Select_s` or `Switch_s`: when `TmrMs` >= C - 1, `TmrMs`
 := 0 and `TmrPer` is incremented; when `TmrPer` is T - 1 at that point, `TmrPer` := 0 and the timer **expires**.
-The timer expires every T x C ticks. With C = 0 it never expires (RM-HB-03).
+The timer expires every T x C ticks. With C = 0 it never expires (RM-HB-03). The compares with >= end a count above
+its limit after an upset at the next tick.
 
 A **restart** clears both counters. It happens at every master heartbeat on the active bus in `Monitor_s`, at the
 start and at the end of a bus selection process, at a toggle, and when `Cfg_HbTime` /= `HbTimeReg` or
@@ -72,13 +75,14 @@ A message on bus b is a master heartbeat (section 2.1) or an NMT message on bus 
 
 | State | Condition (first match) | Action | Next state |
 | --- | --- | --- | --- |
-| `Idle_s` | `MinimalSet_g` = false and `Nmt_State` = Pre-operational | Start-up process on Bdefault, no switch (RM-SL-01): `Ctoggle` := 0, restart | `Select_s` |
+| `Idle_s` | `MinimalSet_g` = false and `Nmt_State` = Pre-operational | Start-up process on Bdefault, no switch (RM-SL-01): `Ctoggle` := 0, `ToggleDue`, `Exhausted` and `EndAfter` := '0', restart | `Select_s` |
 | `Idle_s` | `MinimalSet_g` = true and `Nmt_State` /= Initialisation | Monitoring starts (RM-MS-02): restart | `Monitor_s` |
+| `Idle_s` | `MinimalSet_g` = false and `Nmt_State` Operational or Stopped (only after an upset of `ocan_nmt`) | Monitoring starts (RM-SL-01): restart | `Monitor_s` |
 | `Idle_s` | otherwise | `ReqBus` := `Cfg_Bdefault` | `Idle_s` |
-| `Monitor_s` | Timer expired | `Err_HbMissing`, `Nmt_PreopReq` (RM-HB-02, RM-SL-02); `Ctoggle` := 0, `ToggleDue` := '1', `Exhausted` := '0', restart | `Select_s` |
+| `Monitor_s` | Timer expired | `Err_HbMissing`, `Nmt_PreopReq` (RM-HB-02, RM-SL-02); `Ctoggle` := 0, `ToggleDue` := '1', `Exhausted` and `EndAfter` := '0', restart | `Select_s` |
 | `Select_s` | Message on the active bus | End of the process (RM-SL-05): `Upd_Valid` with `Upd_Bdefault` = `Link_ActiveBus`, restart | `Monitor_s` |
 | `Select_s` | Message on the inactive bus only | `ReqBus` := the inactive bus, `EndAfter` := '1' (RM-SL-06); `Ctoggle` unchanged | `Switch_s` |
-| `Select_s` | `ToggleDue` = '1', `Nmt_State` = Pre-operational and `Ctoggle` < `Cfg_Ntoggle` | Toggle (RM-SL-03): `ReqBus` := not `ReqBus`, `Ctoggle` + 1, `ToggleDue` := '0', `Exhausted` := '0', restart | `Switch_s` |
+| `Select_s` | `ToggleDue` = '1', `Nmt_State` = Pre-operational, C /= 0 and `Ctoggle` < `Cfg_Ntoggle` | Toggle (RM-SL-03, RM-HB-03): `ReqBus` := not `ReqBus`, `Ctoggle` + 1, `ToggleDue` := '0', `Exhausted` := '0', restart | `Switch_s` |
 | `Select_s` | `ToggleDue` = '1' and `Ctoggle` >= `Cfg_Ntoggle` | `ToggleDue` := '0'; `Err_ToggleEnd` when `Exhausted` = '0', then `Exhausted` := '1' (RM-SL-04) | `Select_s` |
 | `Select_s` | Timer expired | `ToggleDue` := '1' | `Select_s` |
 | `Switch_s` | The link has ended the switch, `EndAfter` = '1' | `Nmt_Switched`; end of the process: `Upd_Valid` with `Upd_Bdefault` = `ReqBus`, `EndAfter` := '0', restart | `Monitor_s` |
@@ -86,8 +90,18 @@ A message on bus b is a master heartbeat (section 2.1) or an NMT message on bus 
 | `Switch_s` | Master heartbeat or NMT message on the bus `ReqBus` | `EndAfter` := '1' | `Switch_s` |
 | `Switch_s` | Timer expired | `ToggleDue` := '1' | `Switch_s` |
 
+In addition, an expiry in `Select_s` that leaves a toggle due while `Nmt_State` is Operational or Stopped gives
+`Nmt_PreopReq` again (RM-SL-03): a request that `ocan_nmt` did not follow, or a return to Operational during the
+process (an NMT message of the old bus delivered during a switch, a reset communication in the minimal set, an
+upset of `ocan_nmt`), does not stop the toggling.
+
 The `when others` branch leads to `Monitor_s` with a restart: the node keeps its bus, and a missing master heartbeat
-starts a new bus selection.
+starts a new bus selection. As in every core of the family, this recovery from an illegal state works only when the
+synthesis tool implements the state machine safely: `ocan_redundancy` protects none of its registers itself, they
+rely on the TMR and the safe state machines of the synthesis tool (protection scope of the user guide). Without an
+upset of the state machine, every register recovers by itself: `TmrMs` and `PresMs` by the compares with >=, a
+toggle that waits outside Pre-operational by the repeated request, `Idle_s` in Operational or Stopped by the start
+of the monitoring, `EndAfter` at the start of every process.
 
 - **Same-cycle messages.** A message on the active bus wins over one on the inactive bus in the same cycle
   (RM-SL-06, DS-BG-04).

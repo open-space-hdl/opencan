@@ -39,6 +39,7 @@ def configs():
         cfg.append(("ocan_dispatch", {flag: "false"}, None))
     for minimal in ("false", "true"):
         cfg.append(("ocan_nmt", {"MinimalSet_g": minimal}, None))
+        cfg.append(("ocan_redundancy", {"MinimalSet_g": minimal}, None))
     return cfg
 
 

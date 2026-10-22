@@ -2,7 +2,7 @@
 
 ## 1. Test results
 
-Run with GHDL 6.0.0 (mcode), VUnit 5.0.0.dev7 and UVVM 2026.03.20: `python run.py "*ocan_link_tb*"`.
+Run with GHDL 6.0.0 (mcode), VUnit 5.0.0.dev7 and UVVM 2026.02.14: `python run.py "*ocan_link_tb*"`.
 
 | Testbench | Test cases | Runs (test case and configuration) | Passed |
 | --- | --- | --- | --- |
