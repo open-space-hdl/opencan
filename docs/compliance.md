@@ -21,7 +21,7 @@ verification plan are marked as planned.
 | 5.4.3 | Bit timing | `ocan_link` | LK-IF-04, LK-PR-03, LK-PR-04 | TC-LK-04, TC-LK-05 | Verified |
 | 5.5 | Electromagnetic compatibility | Out of scope, board | - | - | Out of scope |
 | 5.6.1 | ISO 11898 compliance of the data link layer | `ocan_link` | DS-RX-02, LK-IF-02, LK-IF-03, LK-PR-01, LK-RX-01, LK-TX-01, LK-TX-02 | TC-DS-02, TC-LK-01, TC-LK-03, TC-LK-07, TC-LK-10, TC-LK-17, TC-LK-18 | Verified |
-| 5.6.2 | Fault confinement, error state and counters | `ocan_link` | LK-BS-06, LK-FC-01, LK-FC-02, LK-FC-03, LK-IF-06, LK-PR-01, LK-TX-03, RM-HB-05, RM-IF-07 | TC-LK-01, TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-13, TC-LK-18 | Verified |
+| 5.6.2 | Fault confinement, error state and counters | `ocan_link` | LK-BS-06, LK-FC-01, LK-FC-02, LK-FC-03, LK-IF-06, LK-PR-01, LK-TX-03 | TC-LK-01, TC-LK-06, TC-LK-11, TC-LK-12, TC-LK-13, TC-LK-18 | Verified |
 | 6.1 | Service data objects | `ocan_sdo` | DS-IF-04, DS-RX-01 | TC-DS-01, TC-DS-14 | Planned |
 | 6.2 | Process data objects | `ocan_pdo` | DS-IF-04, DS-IF-06, DS-RX-01, DS-TX-03 | TC-DS-01, TC-DS-08, TC-DS-14 | Planned |
 | 6.3 | Synchronisation object | `ocan_pdo` | DS-IF-04, DS-RX-01, DS-RX-04 | TC-DS-01, TC-DS-14 | Planned |
@@ -42,18 +42,18 @@ verification plan are marked as planned.
 | 7.2.1 | Time distribution, general | `ocan_time` | - | - | Planned |
 | 7.2.2 | Time distribution protocol | `ocan_time` | DS-IF-04, DS-IF-06, DS-RX-01 | TC-DS-01, TC-DS-08, TC-DS-14 | Planned |
 | 7.2.3 | High-resolution time distribution protocol | `ocan_time` | DS-RX-04, DS-RX-05, LK-RX-01 | TC-DS-01, TC-DS-05, TC-LK-01, TC-LK-03, TC-LK-17 | Planned |
-| 8.1 | Redundancy master | Out of scope, master (D1) | RM-SL-07 | - | Out of scope |
-| 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | DS-RX-09, LK-BA-01, LK-BA-02, LK-BA-03, LK-BS-02, LK-BS-03, LK-BS-05, LK-DT-03, LK-IF-01, LK-IF-03, LK-IF-05, LK-RX-02, LK-RX-03, RM-IF-03 | TC-DS-04, TC-DS-06, TC-LK-01, TC-LK-02, TC-LK-03, TC-LK-06, TC-LK-07, TC-LK-08, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-17 | Verified |
-| 8.3.1 | Bus redundancy management parameters | `ocan_od` | NM-IF-05, RM-HB-03, RM-HB-04, RM-IF-02 | - | Planned |
-| 8.3.2 | Start-up procedure | `ocan_redundancy` | LK-BS-01, NM-HB-01, NM-HB-07, NM-SM-01, RM-IF-03, RM-MS-02, RM-SL-01, RM-SL-08 | TC-LK-06, TC-LK-09 | Planned |
-| 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-IF-01, DS-IF-05, DS-RX-01, DS-RX-06, DS-TX-04, DS-TX-06, LK-BS-04, NM-HB-02, NM-HB-03, NM-HB-05, NM-HB-07, NM-IF-06, NM-MS-03, NM-SM-04, NM-SM-05, RM-HB-02, RM-IF-01, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-MS-01, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07 | TC-DS-01, TC-DS-03, TC-DS-04, TC-DS-05, TC-DS-07, TC-DS-09, TC-DS-10, TC-DS-12, TC-DS-14, TC-LK-07 | Planned |
+| 8.1 | Redundancy master | Out of scope, master (D1) | - | - | Out of scope |
+| 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | DS-RX-09, LK-BA-01, LK-BA-02, LK-BA-03, LK-BS-02, LK-BS-03, LK-BS-05, LK-DT-03, LK-IF-01, LK-IF-03, LK-IF-05, LK-RX-02, LK-RX-03, RM-IF-03, RM-SL-06 | TC-DS-04, TC-DS-06, TC-LK-01, TC-LK-02, TC-LK-03, TC-LK-06, TC-LK-07, TC-LK-08, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-17 | Verified |
+| 8.3.1 | Bus redundancy management parameters | `ocan_od` | NM-IF-05, RM-HB-03, RM-HB-04, RM-IF-02, RM-SL-10 | - | Planned |
+| 8.3.2 | Start-up procedure | `ocan_redundancy` | LK-BS-01, NM-HB-01, NM-HB-07, NM-SM-01, RM-IF-03, RM-MS-02, RM-SL-01, RM-SL-08, RM-SL-09 | TC-LK-06, TC-LK-09 | Planned |
+| 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | DS-BG-01, DS-BG-02, DS-BG-03, DS-BG-04, DS-IF-01, DS-IF-05, DS-RX-01, DS-RX-06, DS-TX-04, DS-TX-06, LK-BS-04, NM-HB-02, NM-HB-03, NM-HB-05, NM-HB-07, NM-IF-06, NM-MS-03, NM-SM-04, NM-SM-05, RM-HB-02, RM-HB-05, RM-IF-01, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07, RM-SL-09 | TC-DS-01, TC-DS-03, TC-DS-04, TC-DS-05, TC-DS-07, TC-DS-09, TC-DS-10, TC-DS-12, TC-DS-14, TC-LK-07 | Planned |
 | 9.1 | COB-ID assignment, minimal set | `ocan_nmt` | DS-RX-03, DS-TX-02, NM-IF-01 | TC-DS-02, TC-DS-08 | Planned |
 | 9.2 | Object dictionary, minimal set | `ocan_od` | - | - | Planned |
 | 9.3 | Minimal set CANopen objects | `ocan_pdo` | DS-RX-08 | TC-DS-07 | Planned |
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | - | - | Planned |
-| 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | NM-MS-01, NM-MS-02, NM-MS-03, RM-MS-01, RM-MS-02 | - | Planned |
+| 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | NM-MS-01, NM-MS-02, NM-MS-03, RM-MS-02, RM-SL-05 | - | Planned |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | - | - | Planned |
-| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03, RM-HB-01 | TC-DS-02, TC-DS-08 | Planned |
+| 9.4.8 | Minimal set communication error object | `ocan_sdo` | DS-IF-07, DS-RX-03 | TC-DS-02, TC-DS-08 | Planned |
 | 9.4.10 | Minimal set authorized objects | `ocan_od` | - | - | Planned |
 | 9.5 | Free COB-ID | `ocan_dispatch` | DS-TX-05 | TC-DS-02, TC-DS-11 | Verified |
 | 10.1 to 10.5 | Connectors and pin assignments | Out of scope, board | - | - | Out of scope |
@@ -71,7 +71,7 @@ reference included). A module without a testbench has planned test cases only.
 | `ocan_dispatch` | 29 | 29 | 0 | - |
 | `ocan_link` | 34 | 34 | 0 | - |
 | `ocan_nmt` | 28 | 0 | 0 | NM-IF-01, NM-IF-02, NM-IF-03, NM-IF-04, NM-IF-05, NM-IF-06, NM-IF-07, NM-ID-01, NM-ID-02, NM-ID-03, NM-ID-04, NM-SM-01, NM-SM-02, NM-SM-03, NM-SM-04, NM-SM-05, NM-SM-06, NM-SM-07, NM-HB-01, NM-HB-02, NM-HB-03, NM-HB-04, NM-HB-05, NM-HB-06, NM-HB-07, NM-MS-01, NM-MS-02, NM-MS-03 |
-| `ocan_redundancy` | 23 | 0 | 0 | RM-IF-01, RM-IF-02, RM-IF-03, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-HB-01, RM-HB-02, RM-HB-03, RM-HB-04, RM-HB-05, RM-SL-01, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07, RM-SL-08, RM-MS-01, RM-MS-02 |
+| `ocan_redundancy` | 24 | 0 | 0 | RM-IF-01, RM-IF-02, RM-IF-03, RM-IF-04, RM-IF-05, RM-IF-06, RM-IF-07, RM-IF-08, RM-HB-01, RM-HB-02, RM-HB-03, RM-HB-04, RM-HB-05, RM-SL-01, RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-05, RM-SL-06, RM-SL-07, RM-SL-08, RM-SL-09, RM-SL-10, RM-MS-02 |
 
-Requirements: 114; without a test case in a module with a testbench or a verification plan:
+Requirements: 115; without a test case in a module with a testbench or a verification plan:
 0; test cases of modules with a testbench not run by a testbench: 0.
