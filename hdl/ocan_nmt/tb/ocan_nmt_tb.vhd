@@ -1192,6 +1192,13 @@ begin
                 check_value(LogData(C0_v + 1), x"00", ERROR, "then the boot-up message");
                 check_value(Ena_Sdo, '0', ERROR, "enables cleared until the boot-up message completes");
                 waitFor(Ena_Sdo, '1', 20, "enables after the boot-up message");
+                -- The completion held for 3 P after Tx_Ready: no request while the heartbeat waits for it
+                RespCpl <= 3 * 2 * 16 + 10;
+                C0_v    := TxCnt;
+                waitTx(C0_v + 1, 4 * 16, "heartbeat taken");
+                clocks(3 * 2 * 16);
+                check_value(TxCnt, C0_v + 1, ERROR, "no request while the completion is pending");
+                check_value(Tx_Valid, '0', ERROR, "no Tx_Valid while the completion is pending");
 
             -- *** TC-NM-12: aborted frames ***
             elsif run("test_abort") then
