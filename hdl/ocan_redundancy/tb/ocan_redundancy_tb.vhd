@@ -752,10 +752,17 @@ begin
                     check_value(Stat_Selecting, '0', ERROR, "no process before Pre-operational");
                     C0_v      := CntSw;
                     if MinimalSet_g then
-                        NmtTarget <= NmtOp_c;
+                        -- The Initialisation ends in Operational, and in the second run in Pre-operational: the
+                        -- monitoring starts when the node leaves the Initialisation, in either state (RM-MS-02)
+                        if Bd = 0 then
+                            NmtTarget <= NmtOp_c;
+                        else
+                            NmtTarget <= NmtPreOp_c;
+                        end if;
+                        N_v := CntMiss;
                         clocks(3);
                         check_value(Stat_Selecting, '0', ERROR, "minimal set: no start-up process");
-                        waitCnt(CntMiss, 1, 10 * 4 + 20, "minimal set: monitoring from the end of the Initialisation");
+                        waitCnt(CntMiss, N_v + 1, 10 * 4 + 20, "minimal set: monitoring after the Initialisation");
                     else
                         NmtTarget <= NmtPreOp_c;
                         clocks(3);
@@ -866,12 +873,14 @@ begin
 
             -- *** TC-RM-04: consumer heartbeat time 0 ***
             elsif run("test_hb_disabled") then
-                Cfg_HbTime <= u16(0);
-                TickPer    <= 2;
-                NmtTarget  <= NmtInit_c;
+                -- T = 1: a timer that ran with C = 0 would expire after 65536 ticks, within the 100000 ticks below
+                Cfg_HbTime  <= u16(0);
+                Cfg_Ttoggle <= u8(1);
+                TickPer     <= 2;
+                NmtTarget   <= NmtInit_c;
                 doReset;
                 clocks(10);
-                NmtTarget  <= NmtPreOp_c;
+                NmtTarget   <= NmtPreOp_c;
                 clocks(200000);
                 check_value(Stat_Selecting, '1', ERROR, "the process waits for a message");
                 check_value(Stat_Ctoggle, u8(0), ERROR, "no toggle with C = 0");
@@ -1224,14 +1233,20 @@ begin
                 -- During a process: a toggle that falls due in the Initialisation waits
                 toSelect;
                 waitCnt(CntSw, CntSw + 1, 200, "first toggle");
-                K_v       := to_integer(unsigned(Stat_Ctoggle));
+                K_v := to_integer(unsigned(Stat_Ctoggle));
+                -- 25 ticks of Initialisation: two expiries of the timer (T x C = 10 ticks) fall into it
                 NmtTarget <= NmtInit_c;
-                clocks(3 * 10 * 4);
+                clocks(25 * 4);
                 check_value(Stat_Ctoggle, u8(K_v), ERROR, "no toggle in the Initialisation");
                 check_value(Stat_Selecting, '1', ERROR, "the process is kept");
                 C0_v      := CntSw;
                 NmtTarget <= NmtPreOp_c;
                 waitCnt(CntSw, C0_v + 1, 100, "the waiting toggle after Pre-operational");
+                -- The waiting toggle restarts the timer: the next toggle T x C ticks after it (RM-SL-03, RM-SL-04)
+                N_v := CycBus;
+                waitCnt(CntSw, C0_v + 2, 10 * 4 + 20, "next toggle");
+                check_value(CycBus - N_v >= 9 * 4 + 2 and CycBus - N_v <= 10 * 4 + 1, ERROR,
+                            "next toggle T x C ticks after the waiting toggle");
 
             -- *** TC-RM-14: events in every cycle ***
             elsif run("test_events_every_cycle") then
