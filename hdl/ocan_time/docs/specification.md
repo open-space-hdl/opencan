@@ -28,9 +28,10 @@ the object or protocol.
 | TM-IF-02 | The time block shall pass the Local Time PDO to `ocan_dispatch` as a transmit request (DLC and data) with a valid/ready handshake and take its completion (sent, aborted). | 7.2.2.5.1 | 7.2.2e, 7.2.2f, 7.2.3h, 7.2.3i |
 | TM-IF-03 | The time block shall take from `ocan_od` the transmission type of the Spacecraft Time PDO (RPDO) and of the Local Time PDO (TPDO), and a write of the Local SCET Set object (value and event). It shall provide the current local time for reads of the Local SCET Get object. | 7.5.2.35, 7.5.2.37 | 7.1.2b, 7.1.2c, 7.1.2d |
 | TM-IF-04 | The time block shall take a one-cycle request from the user logic to send the Local Time PDO. | 7.2.2.3 | 7.2.2f |
-| TM-IF-05 | The time block shall provide the local time (coarse and fine) to the user logic in every clock cycle, a flag that is set once the local time has been set since the hardware reset, and events for a setting of the local time, for a SYNC sample, for a Local Time PDO that could not be requested because the previous one was pending, and for a Spacecraft Time PDO that was not processed. | none | 7.1.1a, 7.2.3k |
+| TM-IF-05 | The time block shall provide the local time (coarse and fine) to the user logic in every clock cycle, a flag that is set once the local time has been set since the hardware reset, and events for a setting of the local time, for a SYNC sample, for a Local Time PDO that could not be requested because the previous one was pending, for a Local Time PDO whose completion did not arrive (TM-TX-07), and for a Spacecraft Time PDO that was not processed. | none | 7.1.1a, 7.2.3k |
 | TM-IF-06 | The time block shall take an event in every clock cycle, also the SYNC and the Spacecraft Time PDO in consecutive frames, and complete the processing of each event within the minimum frame time of 46 bit times at 1 Mbit/s (D11). | none | 7.2.3k |
 | TM-IF-07 | The time block shall take the reset communication event of `ocan_nmt` (NM-SM-06) and clear its communication state: the SYNC count of TM-TX-02 restarts, and a request of the user logic for a Local Time PDO at the next SYNC (TM-TX-03) is discarded. A request that `ocan_dispatch` has taken completes as the dispatch reports it. The event shall not change the local time, the set flag and the SYNC sample; the condition of TM-RX-05 refers to the hardware reset only. | 7.3.2.2.1 | none |
+| TM-IF-08 | The time block shall take a one-cycle tick every millisecond, the tick of `ocan_nmt` and `ocan_redundancy`. | none | none |
 
 ### 2.2 Local SCET (TM-1)
 
@@ -70,6 +71,7 @@ the object or protocol.
 | TM-TX-04 | With transmission type 254 or 255 the Local Time PDO shall be requested on a request of the user logic: in the high-resolution protocol (TM-RX-04) with the last SYNC sample, otherwise with the local time at the request. | 7.2.2.2, 7.2.2.3 | 7.2.2f, 7.2.3k |
 | TM-TX-05 | Transmission types 241 to 253 shall request no Local Time PDO. | 7.5.2.37 | 11.1 |
 | TM-TX-06 | At most one Local Time PDO request shall be pending. One that falls due while a request is pending shall not be requested and shall raise the event of TM-IF-05. | none | none |
+| TM-TX-07 | When the completion of a Local Time PDO that `ocan_dispatch` has taken does not arrive within 256 millisecond ticks, the time block shall end the wait and raise the event of TM-IF-05. The frame is not repeated, and the late completion of the old frame is not taken for a later request (DS-TX-03). | none | none |
 
 ### 2.6 Frame format example
 
@@ -94,6 +96,7 @@ fine time ABCDEFh sets the local fine time to ABCDh (TM-RX-01, TM-TX-01).
 | Spacecraft Time PDO with fewer than seven bytes | TM-3 | Not processed; event |
 | High-resolution Spacecraft Time PDO before the first SYNC sample | TM-3 | Not processed; event |
 | Local Time PDO due while the previous one is pending | TM-4 | Not requested; event |
+| Local Time PDO taken without completion within 256 ms (lost completion, upset) | TM-4 | Wait ended; event; not repeated |
 | Transmission type 241 to 253 | TM-4 | No Local Time PDO |
 
 ## 4. Configuration parameters

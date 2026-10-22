@@ -36,12 +36,12 @@ verification plan are marked as planned.
 | 6.8 | Object dictionary | `ocan_od` | - | - | Planned |
 | 6.9 | Synchronous communications | `ocan_pdo` | - | - | Planned |
 | 6.10 | COB-ID and NODE-ID assignment | `ocan_nmt` | DS-CP-01, DS-CP-02, DS-IF-02, DS-IF-03, DS-IF-07, DS-RX-01, DS-RX-07, DS-TX-02, LK-BA-04, LK-IF-05, NM-ID-01, NM-ID-02, NM-ID-03, NM-ID-04, NM-IF-01, NM-IF-03 | TC-DS-01, TC-DS-02, TC-DS-03, TC-DS-08, TC-DS-13, TC-DS-14, TC-LK-06, TC-LK-09, TC-LK-12, TC-LK-14, TC-NM-01, TC-NM-02, TC-NM-03, TC-NM-04, TC-NM-05, TC-NM-13 | Verified |
-| 7.1.1 | Time code formats | `ocan_time` | TM-CT-01, TM-CT-02, TM-CT-03, TM-IF-05 | TC-TM-01 (planned), TC-TM-02 (planned), TC-TM-03 (planned), TC-TM-05 (planned), TC-TM-16 (planned) | Planned |
-| 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | TM-CT-01, TM-CT-04, TM-CT-05, TM-IF-03, TM-RX-01, TM-TX-01 | TC-TM-01 (planned), TC-TM-04 (planned), TC-TM-05 (planned), TC-TM-07 (planned), TC-TM-11 (planned), TC-TM-18 (planned) | Planned |
+| 7.1.1 | Time code formats | `ocan_time` | TM-CT-01, TM-CT-02, TM-CT-03, TM-IF-05 | TC-TM-01 (planned), TC-TM-02 (planned), TC-TM-03 (planned), TC-TM-05 (planned), TC-TM-16 (planned), TC-TM-19 (planned) | Planned |
+| 7.1.2 | Spacecraft elapsed time objects | `ocan_time` | TM-CT-01, TM-CT-04, TM-CT-05, TM-IF-03, TM-RX-01, TM-TX-01 | TC-TM-01 (planned), TC-TM-04 (planned), TC-TM-05 (planned), TC-TM-07 (planned), TC-TM-11 (planned), TC-TM-18 (planned), TC-TM-20 (planned) | Planned |
 | 7.1.3 | Spacecraft UTC objects | Not implemented (D5, optional time code) | - | - | Not implemented |
 | 7.2.1 | Time distribution, general | `ocan_time` | TM-RX-03 | TC-TM-08 (planned) | Planned |
 | 7.2.2 | Time distribution protocol | `ocan_time` | DS-IF-04, DS-IF-06, DS-RX-01, TM-IF-01, TM-IF-02, TM-IF-04, TM-RX-03, TM-TX-01, TM-TX-04 | TC-DS-01, TC-DS-08, TC-DS-14, TC-TM-06 (planned), TC-TM-07 (planned), TC-TM-08 (planned), TC-TM-11 (planned), TC-TM-13 (planned), TC-TM-14 (planned), TC-TM-16 (planned), TC-TM-18 (planned) | Planned |
-| 7.2.3 | High-resolution time distribution protocol | `ocan_time` | DS-RX-04, DS-RX-05, LK-RX-01, TM-IF-02, TM-IF-05, TM-IF-06, TM-RX-04, TM-RX-05, TM-SY-01, TM-TX-01, TM-TX-02, TM-TX-03, TM-TX-04 | TC-DS-01, TC-DS-05, TC-LK-01, TC-LK-03, TC-LK-17, TC-TM-01 (planned), TC-TM-05 (planned), TC-TM-06 (planned), TC-TM-09 (planned), TC-TM-11 (planned), TC-TM-12 (planned), TC-TM-13 (planned), TC-TM-14 (planned), TC-TM-16 (planned), TC-TM-17 (planned), TC-TM-18 (planned) | Planned |
+| 7.2.3 | High-resolution time distribution protocol | `ocan_time` | DS-RX-04, DS-RX-05, LK-RX-01, TM-IF-02, TM-IF-05, TM-IF-06, TM-RX-04, TM-RX-05, TM-SY-01, TM-TX-01, TM-TX-02, TM-TX-03, TM-TX-04 | TC-DS-01, TC-DS-05, TC-LK-01, TC-LK-03, TC-LK-17, TC-TM-01 (planned), TC-TM-05 (planned), TC-TM-06 (planned), TC-TM-09 (planned), TC-TM-11 (planned), TC-TM-12 (planned), TC-TM-13 (planned), TC-TM-14 (planned), TC-TM-16 (planned), TC-TM-17 (planned), TC-TM-18 (planned), TC-TM-19 (planned), TC-TM-20 (planned) | Planned |
 | 8.1 | Redundancy master | Out of scope, master (D1) | - | - | Out of scope |
 | 8.2.1 to 8.2.3 | Bus redundancy architectures | `ocan_link` | DS-RX-09, LK-BA-01, LK-BA-02, LK-BA-03, LK-BS-02, LK-BS-03, LK-BS-05, LK-DT-03, LK-IF-01, LK-IF-03, LK-IF-05, LK-RX-02, LK-RX-03, RM-IF-03, RM-SL-06 | TC-DS-04, TC-DS-06, TC-LK-01, TC-LK-02, TC-LK-03, TC-LK-06, TC-LK-07, TC-LK-08, TC-LK-12, TC-LK-14, TC-LK-15, TC-LK-17, TC-RM-01, TC-RM-10, TC-RM-15, TC-RM-17, TC-RM-18, TC-RM-19 | Verified |
 | 8.3.1 | Bus redundancy management parameters | `ocan_od` | NM-IF-05, RM-HB-03, RM-HB-04, RM-IF-02, RM-SL-10 | TC-NM-09, TC-RM-01, TC-RM-03, TC-RM-04, TC-RM-06, TC-RM-09, TC-RM-12, TC-RM-14, TC-RM-16, TC-RM-23, TC-RM-24 | Planned |
@@ -73,7 +73,7 @@ reference included). A module without a testbench has planned test cases only.
 | `ocan_nmt` | 29 | 29 | 0 | - |
 | `ocan_pkg` | 1 | 1 | 0 | - |
 | `ocan_redundancy` | 24 | 24 | 0 | - |
-| `ocan_time` | 26 | 0 | 26 | - |
+| `ocan_time` | 28 | 0 | 28 | - |
 
-Requirements: 143; without a test case in a module with a testbench or a verification plan:
+Requirements: 145; without a test case in a module with a testbench or a verification plan:
 0; test cases of modules with a testbench not run by a testbench: 0.
