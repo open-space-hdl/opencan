@@ -50,7 +50,7 @@ Checkers that run in every test of the direct bench:
 | `test_hb_presence` (TC-RM-05) | Master heartbeats on either bus set `Stat_HbPresent` of that bus; it is cleared C ticks after the last one. Heartbeats on the inactive bus outside a bus selection process set its presence but do not restart the timer | RM-HB-05, RM-SL-07, RM-IF-07 |
 | `test_param_change` (TC-RM-06) | A change of C or of T in `Monitor_s` and in `Select_s` restarts the timer: the next expiry comes T x C ticks after the change, with the new values | RM-HB-04 |
 | `test_first_toggle` (TC-RM-07) | A missing master heartbeat with the NMT model entering Pre-operational after 0, 1 and 50 cycles, and staying in the Initialisation for 10 ticks: the first toggle comes once `Nmt_State` is Pre-operational, `Link_Bus` inverted, `Ctoggle` 1; `Nmt_Switched` one cycle after the link model reports the new bus, for switch times of 1 and 400 cycles | RM-SL-02, RM-SL-03, RM-IF-05 |
-| `test_toggling` (TC-RM-08) | N = 0, 1, 2, 3 and 255 without any message: a toggle every T x C ticks, `Ctoggle` counts; after N toggles no further toggle and one `Err_ToggleEnd`; the node is on the start bus after an even N and on the other bus after an odd N, with Bdefault 0 and 1; the process keeps running. N = 0: no toggle, `Err_ToggleEnd` at the first expiry | RM-SL-03, RM-SL-04, RM-SL-09, RM-IF-07 |
+| `test_toggling` (TC-RM-08) | N = 0, 1, 2, 3 and 255 without any message: a toggle every T x C ticks, `Ctoggle` counts; after N toggles no further toggle and one `Err_ToggleEnd`; the node is on the start bus after an even N and on the other bus after an odd N, with Bdefault 0 and 1; the process keeps running. N = 0 after a missing heartbeat: no toggle, `Err_ToggleEnd` in the cycle after `Err_HbMissing`, since the first toggle is due at once (RM-SL-02); N = 0 in the start-up process: no toggle, `Err_ToggleEnd` at the first expiry | RM-SL-02, RM-SL-03, RM-SL-04, RM-SL-09, RM-IF-07 |
 | `test_select_end_active` (TC-RM-09) | During a bus selection process, after 0, 1 and 2 toggles, an NMT message and, in a second run, a master heartbeat on the active bus: the process ends in the next cycle, `Upd_Valid` with that bus, `Stat_Selecting` '0', and a missing master heartbeat is detected T x C ticks later | RM-SL-05, RM-IF-02 |
 | `test_select_end_inactive` (TC-RM-10) | During a bus selection process, a master heartbeat and, in a second run, an NMT message on the inactive bus: while waiting for a toggle, in the cycle after a toggle, during a switch on the bus of `ReqBus` and during a switch on the other bus. The node switches at once without a change of `Ctoggle`, `Nmt_Switched` comes when the link model reports the bus, the process ends with `Upd_Valid` of that bus. Messages on both buses in one cycle: the active bus wins, no switch | RM-SL-06, RM-IF-08 |
 | `test_inactive_ignored` (TC-RM-11) | Outside a bus selection process, NMT messages and master heartbeats on the inactive bus in every phase of the timer: no change of `Link_Bus`, no restart of the timer, `Err_HbMissing` at its time | RM-SL-07 |
@@ -81,7 +81,7 @@ Checkers that run in every test of the direct bench:
 | RM-HB-04 | TC-RM-03, TC-RM-06, TC-RM-16 |
 | RM-HB-05 | TC-RM-04, TC-RM-05 |
 | RM-SL-01 | TC-RM-01, TC-RM-16 |
-| RM-SL-02 | TC-RM-07, TC-RM-17 |
+| RM-SL-02 | TC-RM-07, TC-RM-08, TC-RM-17 |
 | RM-SL-03 | TC-RM-07, TC-RM-08, TC-RM-13, TC-RM-17 |
 | RM-SL-04 | TC-RM-08, TC-RM-16, TC-RM-19 |
 | RM-SL-05 | TC-RM-09, TC-RM-15, TC-RM-16, TC-RM-17 |

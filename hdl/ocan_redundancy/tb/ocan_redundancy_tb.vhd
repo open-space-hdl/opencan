@@ -89,11 +89,13 @@ architecture sim of ocan_redundancy_tb is
     signal Cyc     : natural := 0;
     signal TickPer : natural := 4;
 
-    -- *** Model of ocan_nmt: follows NmtTarget, enters Pre-operational NmtDly cycles after Nmt_PreopReq ***
+    -- *** Model of ocan_nmt: Initialisation during Rst and 4 cycles after it, then follows NmtTarget; enters
+    -- Pre-operational NmtDly cycles after Nmt_PreopReq ***
     signal NmtTarget : std_logic_vector(1 downto 0) := NmtInit_c;
     signal NmtDly    : natural                      := 1;
 
-    -- *** Model of ocan_link: a change of Link_Bus takes SwDly cycles with Link_Switching = '1' ***
+    -- *** Model of ocan_link: disabled during Rst and 4 cycles after it (the active bus is Link_Bus, LK-BS-01), then
+    -- a change of Link_Bus takes SwDly cycles with Link_Switching = '1' ***
     signal SwDly : natural := 3;
 
     -- *** Monitors: counts and the cycle of the last event ***
@@ -105,6 +107,7 @@ architecture sim of ocan_redundancy_tb is
     signal CntPreop : natural := 0;
     signal UpdBus   : std_logic;
     signal CycMiss  : natural := 0;
+    signal CycEnd   : natural := 0;
     signal CycHb    : natural := 0;
     signal CycSw    : natural := 0;
     signal CycSwEnd : natural := 0;
@@ -190,9 +193,19 @@ begin
     p_nmt : process (Clk) is
         variable Last_v : std_logic_vector(1 downto 0) := NmtInit_c;
         variable Cnt_v  : integer                      := -1;
+        variable Hold_v : natural                      := 0;
     begin
         if rising_edge(Clk) then
-            if NmtTarget /= Last_v then
+            if Rst = '1' or Hold_v > 0 then
+                Nmt_State <= NmtInit_c;
+                Last_v    := NmtInit_c;
+                Cnt_v     := -1;
+                if Rst = '1' then
+                    Hold_v := 4;
+                else
+                    Hold_v := Hold_v - 1;
+                end if;
+            elsif NmtTarget /= Last_v then
                 Nmt_State <= NmtTarget;
                 Last_v    := NmtTarget;
                 Cnt_v     := -1;
@@ -213,9 +226,19 @@ begin
     -----------------------------------------------------------------------------------------------
     p_link : process (Clk) is
         variable Cnt_v : integer := -1;
+        variable Dis_v : natural := 0;
     begin
         if rising_edge(Clk) then
-            if Cnt_v < 0 and Link_Bus /= Link_ActiveBus then
+            if Rst = '1' or Dis_v > 0 then
+                Link_ActiveBus <= Link_Bus;
+                Link_Switching <= '0';
+                Cnt_v          := -1;
+                if Rst = '1' then
+                    Dis_v := 4;
+                else
+                    Dis_v := Dis_v - 1;
+                end if;
+            elsif Cnt_v < 0 and Link_Bus /= Link_ActiveBus then
                 Link_Switching <= '1';
                 Cnt_v          := SwDly;
             end if;
@@ -244,6 +267,7 @@ begin
             end if;
             if Err_ToggleEnd = '1' then
                 CntEnd <= CntEnd + 1;
+                CycEnd <= Cyc;
             end if;
             if Nmt_Switched = '1' then
                 CntSw <= CntSw + 1;
@@ -753,7 +777,7 @@ begin
                         if Dlc /= 1 then
                             C0_v := CntDlc;
                             hb(B, Dlc);
-                            clocks(1);
+                            clocks(2);
                             check_value(CntDlc, C0_v + 1, ERROR, "Err_HbDlc for DLC " & to_string(Dlc));
                             check_value(Stat_HbPresent, "00", ERROR, "no presence for a wrong DLC");
                         end if;
@@ -779,7 +803,8 @@ begin
 
                     case K is
                         when 0 =>
-                            Cfg_HbTime  <= u16(1);
+                            -- C = 1 from the measured heartbeat on (below)
+                            Cfg_HbTime  <= u16(5);
                             Cfg_Ttoggle <= u8(1);
                             TC_v        := 1;
                         when 1 =>
@@ -812,7 +837,12 @@ begin
                         check_value(CntMiss, C0_v, ERROR, "heartbeats in time keep the monitoring");
                     end if;
                     afterTick(0);
+                    if K = 0 then
+                        Cfg_HbTime <= u16(1);
+                    end if;
                     hbNow(act);
+                    clocks(1);
+                    C0_v := CntMiss;
                     waitCnt(CntMiss, C0_v + 1, TC_v * 4 + 10, "missing master heartbeat");
                     check_value(CycMiss - CycHb, TC_v * 4, ERROR, "missing after T x C ticks, K = " & to_string(K));
                 end loop;
@@ -866,6 +896,7 @@ begin
                 C0_v := CntMiss;
                 B_v  := act;
                 hb(B_v);
+                clocks(1);
                 N_v  := CycHb;
 
                 for I in 1 to 4 loop
@@ -890,7 +921,7 @@ begin
                 check_value(CycMiss - N_v >= 13 * 4 + 1 and CycMiss - N_v <= 14 * 4 + 1, ERROR,
                             "missing T x C ticks after the change of C");
                 -- Change of T during the process: the next toggle T x C ticks after it
-                wait until Stat_Selecting = '1';
+                waitFor(Stat_Selecting, '1', 100, "bus selection process after the missing heartbeat");
                 waitCnt(CntSw, CntSw + 1, 200, "first toggle");
                 clocks(4 * 4);
                 Cfg_Ttoggle <= u8(4);
@@ -971,6 +1002,11 @@ begin
                     C0_v         := CntSw;
                     K_v          := CntEnd;
                     waitCnt(CntEnd, K_v + 1, (N_v + 2) * 30, "end of the toggling");
+                    if N_v = 0 then
+                        -- The first toggle is due at once after the missing heartbeat (RM-SL-02): with N = 0 the
+                        -- toggling ends in the next cycle
+                        check_value(CycEnd - CycMiss, 1, ERROR, "N = 0: Err_ToggleEnd one cycle after Err_HbMissing");
+                    end if;
                     check_value(CntSw - C0_v, N_v, ERROR, "number of toggles");
                     check_value(Stat_Ctoggle, u8(N_v), ERROR, "Ctoggle after the toggling");
                     if N_v mod 2 = 0 then
@@ -1020,9 +1056,10 @@ begin
                         hb(B_v);
                     end if;
                     wait until falling_edge(Clk);
+                    check_value(Stat_Selecting, '0', ERROR, "monitoring after the end");
+                    wait until falling_edge(Clk);
                     check_value(CntUpd, C0_v + 1, ERROR, "Upd_Valid at the end of the process");
                     check_value(UpdBus = '1', B_v = 1, ERROR, "Bdefault updated to the active bus");
-                    check_value(Stat_Selecting, '0', ERROR, "monitoring after the end");
                     C0_v := CntMiss;
                     waitCnt(CntMiss, C0_v + 1, 10 * 4 + 10, "monitoring after the end");
                 end loop;
@@ -1064,6 +1101,7 @@ begin
                         when others =>
                             -- Messages on both buses in one cycle: the active bus wins
                             ev('1', 1, '1', 1, '0', '0');
+                            clocks(1);
                             wait until falling_edge(Clk);
                             check_value(CntUpd, C0_v + 1, ERROR, "the active bus wins");
                             check_value(UpdBus = '1', B_v = 1, ERROR, "Bdefault of the active bus");
@@ -1086,6 +1124,7 @@ begin
                 C0_v := CntMiss;
                 B_v  := act;
                 hb(B_v);
+                clocks(1);
                 N_v  := CycHb;
 
                 for I in 0 to 5 loop
