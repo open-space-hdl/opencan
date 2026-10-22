@@ -7,3 +7,4 @@ bus selection process with the start-up on Bdefault, the toggling mechanism, Cto
 | --- | --- |
 | [specification.md](docs/specification.md) | Requirements |
 | [architecture.md](docs/architecture.md) | Blocks, ports, state machine |
+| [verification_plan.md](docs/verification_plan.md) | Test cases |
