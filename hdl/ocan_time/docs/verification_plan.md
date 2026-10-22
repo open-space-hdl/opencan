@@ -7,8 +7,8 @@
 - `direct`: the bench drives the SYNC and Spacecraft Time PDO events, the configuration, the Local SCET Set writes,
   the user requests and the reset communication event cycle by cycle, and answers the transmit handshake like
   `ocan_dispatch`. A reference model of the time block, written from the specification, computes the local time of
-  every cycle as the last setting plus floor(n * 2^F / f) with exact integer arithmetic, and predicts the samples, the
-  frames and the events. This bench checks the exact rate, the settings and the triggers.
+  every cycle as the last setting plus floor(n * 2^F / f) in closed form (in double precision, which is exact for
+  n < 2^28 cycles since n * 2^F stays below 2^52), and predicts the samples, the frames and the events. This bench checks the exact rate, the settings and the triggers.
 - `network`: `ocan_time` with `ocan_dispatch`, `ocan_link` and the CAN network model of `tb/` (see the
   [verification plan of ocan_link](../../ocan_link/docs/verification_plan.md)). A model node acts as SYNC producer and
   time producer. This bench shows the byte order on the bus and the latency of the SYNC sample on both buses.
@@ -28,7 +28,7 @@ Tests observe the ports of `ocan_time`, the buses and the model logs only.
 | `f40m` | 24, 40000000 | Clock frequency that is not a power of two, long-run rate (TC-TM-02) |
 | `f1m` | 24, 1000000 | Lower bound of `ClkFrequency_g`; `Q_c` = 16 |
 | `fmax` | 24, 2147483647 | Upper bound of `ClkFrequency_g` |
-| `fine0` to `fine23` | 0 to 23, 100000000 | Every other width of the fine time (TC-TM-01, TC-TM-03, TC-TM-07, TC-TM-11) |
+| `fine0` to `fine23` | 0 to 23, 1000000 | Every other width of the fine time (TC-TM-01, TC-TM-03, TC-TM-07, TC-TM-11), at the lower bound of the clock frequency, so that a fine time unit is at most 10^6 cycles and the wrap of TC-TM-03 is reached |
 | `net` | 24, 40000000 | Network bench |
 
 `FineBits_g` changes the structure, so every value from 0 to 24 is simulated. `ClkFrequency_g` is simulated at both
@@ -49,12 +49,12 @@ and the precedence of the settings (architecture, section 4), the counting of th
 
 | Test ID | Description | Requirements |
 | --- | --- | --- |
-| `test_counter_rate` (TC-TM-01) | From a setting, the local time equals the set value plus floor(n * 2^F / f) in every one of 100000 cycles, in every configuration of the direct bench | TM-CT-01, TM-CT-02, TM-IF-05 |
+| `test_counter_rate` (TC-TM-01) | From a setting, the local time equals the set value plus floor(n * 2^F / f) in every cycle for at least 100000 cycles and three fine time units, in every configuration of the direct bench | TM-CT-01, TM-CT-02, TM-IF-05 |
 | `test_long_run_rate` (TC-TM-02) | Configurations `f40m` and `f1m`: 2^24 + 12345 cycles without a setting, compared with the reference at every 2^20 cycles and at the end, without any deviation | TM-CT-02 |
 | `test_coarse_wrap` (TC-TM-03) | Set to coarse time 2^32 - 1 and fine time a few units below its maximum: the time wraps to 0 with the exact advance | TM-CT-03 |
 | `test_reset_time` (TC-TM-04) | After `Rst`: local time 0, `Stat_TimeSet` '0', no SYNC sample. `Nmt_ResetComm` after a setting and a sample: local time, `Stat_TimeSet`, the sample and a later high-resolution setting are unchanged | TM-CT-04, TM-IF-07 |
 | `test_scet_set` (TC-TM-05) | 1000 writes of Local SCET Set with random values: the value from the next cycle on, the exact advance from there, `Evt_Set` and `Stat_TimeSet`; `Stat_Scet` is the local time. A write in the cycle of a basic setting and in the second cycle of a high-resolution setting: the write wins | TM-CT-05, TM-IF-03, TM-IF-05 |
-| `test_sync_sample` (TC-TM-06) | SYNCs with DLC 0 and with DLC 1 and every counter byte: the sample is the local time of the cycle of the event, `Evt_Sync` one cycle later. SYNCs with DLC 2 to 15: no sample, no event, no count | TM-SY-01, TM-SY-02, TM-IF-01 |
+| `test_sync_sample` (TC-TM-06) | SYNCs with DLC 0 and with DLC 1 (the counter byte is not an input of `ocan_time`): the sample is the local time of the cycle of the event, `Evt_Sync` one cycle later. SYNCs with DLC 2 to 15: no sample, no event, no count | TM-SY-01, TM-SY-02, TM-IF-01 |
 | `test_rx_format` (TC-TM-07) | Spacecraft Time PDOs with random SCETs and the example of the specification (section 2.6) in every width of the fine time: coarse and fine time decoded with the bytes least significant first, the fine time cut to F bits. DLC 8: the first seven bytes. DLC 0 to 6: not processed, `Err_RxDrop` | TM-RX-01, TM-RX-02, TM-IF-01 |
 | `test_rx_basic` (TC-TM-08) | Types 254 and 255: the local time is the received SCET from the cycle after the event, with the exact advance from there; `Evt_Set` and `Stat_TimeSet` | TM-RX-03 |
 | `test_rx_high_res` (TC-TM-09) | Types 0, 1, 120 and 240: a SYNC sample, then the Spacecraft Time PDO 1, 2, 1000, 1000000 and a random number of cycles later. After the two-cycle load the local time equals that of an ideal setting at the SYNC: the received SCET plus floor(n * 2^F / f) for the n cycles since the sample, compared in every cycle after the load. Without a SYNC sample since `Rst`: not processed, `Err_RxDrop`; a sample taken before `Nmt_ResetComm` still counts | TM-RX-04, TM-RX-05, TM-IF-07 |
@@ -68,7 +68,7 @@ and the precedence of the settings (architecture, section 4), the counting of th
 | `test_back_to_back` (TC-TM-17) | A SYNC followed by a Spacecraft Time PDO 1, 2 and 3 cycles later, a PDO followed by a SYNC one cycle later, and 2000 random events in consecutive cycles, checked against the reference | TM-IF-06 |
 | `test_tx_timeout` (TC-TM-19) | A Local Time PDO taken without completion: `Err_TxTimeout` 255 to 256 ticks later, no repetition; a request that falls due while the frame is awaited gives `Err_TxBusy`; after the time-out the next request falls due and is taken after the late completion of the old frame, which is not taken for it | TM-TX-07, TM-TX-06, TM-IF-05, TM-IF-08 |
 | `test_same_cycle` (TC-TM-20) | A SYNC and a high-resolution Spacecraft Time PDO in one cycle: the PDO relates to that SYNC, also as the first SYNC after `Rst`. A SYNC in the cycle after a high-resolution PDO: the load uses the SYNC before the PDO. A write of Local SCET Set, a basic setting and a high-resolution load in one cycle, in every combination: the write wins over the basic setting, the basic setting over the load. A SYNC in the cycle of `Nmt_ResetComm` and in the cycle of a change of `Cfg_TxType`: not counted, no request. With type 0, `Req_Valid` in the cycle of a sampled SYNC: the frame at the next sampled SYNC | TM-IF-06, TM-RX-04, TM-RX-05, TM-CT-05, TM-TX-02, TM-TX-03, TM-IF-07 |
-| `test_net_time` (TC-TM-18) | Bench `net`: M1 sends a SYNC and then the Spacecraft Time PDO (type 1) with its time at the SYNC; the local time of the node at the sample equals that time plus the fixed latency stated in the user guide. The Local Time PDO of the node (type 1) on the bus carries its sample in the byte order of the specification. The latency from the end of the SYNC frame to `Evt_Sync` is the same on bus A and on bus B | TM-SY-01, TM-RX-01, TM-RX-04, TM-TX-01, TM-TX-02 |
+| `test_net_time` (TC-TM-18) | Bench `net`, on bus A and on bus B: M1 sends a SYNC; the latency from the end of the SYNC frame on the bus to `Evt_Sync` is the same on both buses within one clock cycle and one time quantum, and is reported. The Local Time PDO of the node (type 1) carries its sample in the byte order of the specification. M1 then sends the Spacecraft Time PDO (type 1) with its time at the SYNC: the local time equals that time at the sample, advanced by floor(n * 2^F / f) from there | TM-SY-01, TM-RX-01, TM-RX-04, TM-TX-01, TM-TX-02 |
 
 The high-resolution setting loads `Time` := SCET + `Elap` and `Acc` := `ElapAcc` from an elapsed counter that
 runs one cycle ahead (architecture, sections 3 and 4). For a sample in cycle c and a PDO in cycle k, the load in
