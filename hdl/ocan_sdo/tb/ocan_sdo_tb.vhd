@@ -1831,7 +1831,38 @@ begin
                 clocks(2000);
                 check_value(TxCnt, N_v + 1, ERROR, "no repetition after the time-out");
                 check_value(CntTmo, C0_v + 1, ERROR, "one Err_TxTimeout");
-                RespCpl <= 3;
+
+                -- The 256 ticks count from the take, also after an access answered after 200 ticks and after the
+                -- time-out of an access (512 ticks)
+                for A in 0 to 1 loop
+                    if A = 0 then
+                        ObjCfg(14).DlyTk <= 200;
+                    else
+                        ObjCfg(14).Lost <= true;
+                    end if;
+                    loadObjects;
+                    C0_v := CntTmo;
+                    N_v  := TxCnt;
+                    req(ulInit(x"2005", x"00"));
+                    waitCnt(TxCnt, N_v + 1, 512 * 4 + 100, "reply taken after the access " & to_string(A));
+                    C1_v := Cyc;
+                    if A = 0 then
+                        check_value(TxLog(N_v), ulExpResp(x"2005", x"00", 4, x"4C3C2C1C"), ERROR,
+                                    "reply after an access of 200 ticks");
+                    else
+                        check_value(TxLog(N_v), abortResp(x"2005", x"00", x"08000000"), ERROR,
+                                    "abort after an access without an answer");
+                    end if;
+                    waitCnt(CntTmo, C0_v + 1, 256 * 4 + 50, "Err_TxTimeout after the access " & to_string(A));
+                    check_value(Cyc - C1_v >= 255 * 4 and Cyc - C1_v <= 257 * 4 + 2, true, ERROR,
+                                "Err_TxTimeout 256 ticks after the take of the reply after the access " &
+                                to_string(A) & " (" & to_string(Cyc - C1_v) & " cycles)");
+                end loop;
+
+                ObjCfg(14).DlyTk <= 0;
+                ObjCfg(14).Lost  <= false;
+                loadObjects;
+                RespCpl          <= 3;
                 transact(ulInit(x"2000", x"02"), ulExpResp(x"2000", x"02", 2, x"0000B2A2"), "request after the time-out");
                 -- Completions while no reply is outstanding: ignored
                 stray(false);
