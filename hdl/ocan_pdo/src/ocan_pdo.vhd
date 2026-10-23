@@ -156,6 +156,8 @@ begin
         -- *** Receive PDOs (PD-RX-01 to PD-RX-07) ***
         -- The SYNC passes the held data first, so that a receive PDO of the same cycle is held for the next SYNC
         -- (PD-RX-06)
+        RxNum_v := to_integer(unsigned(RxRpdo_Num));
+
         for N in 0 to NumRpdo_g - 1 loop
             if not Ena_v then
                 -- No data held outside Operational and after a reset communication (PD-RS-02, PD-RS-03)
@@ -165,21 +167,19 @@ begin
                 v.RxEvt(N) := '1';
                 v.HoldV(N) := '0';
             end if;
+            if RxRpdo_Valid = '1' and Ena_v and RxNum_v = N then
+                T_v := to_integer(unsigned(Cfg_RpdoType(8 * N + 7 downto 8 * N)));
+                if unsigned(RxRpdo_Dlc) < 8 then
+                    v.ErrLen(N) := '1';                   -- PD-RX-02
+                elsif T_v >= 254 then
+                    v.RxOut(N) := RxRpdo_Data;            -- PD-RX-03
+                    v.RxEvt(N) := '1';
+                elsif T_v <= 240 then
+                    v.Hold(N)  := RxRpdo_Data;            -- PD-RX-04, the last value wins
+                    v.HoldV(N) := '1';
+                end if;                                   -- 241 to 253: not processed (PD-RX-05)
+            end if;
         end loop;
-
-        RxNum_v := to_integer(unsigned(RxRpdo_Num));
-        if RxRpdo_Valid = '1' and Ena_v and RxNum_v < NumRpdo_g then
-            T_v := to_integer(unsigned(Cfg_RpdoType(8 * RxNum_v + 7 downto 8 * RxNum_v)));
-            if unsigned(RxRpdo_Dlc) < 8 then
-                v.ErrLen(RxNum_v) := '1';                 -- PD-RX-02
-            elsif T_v >= 254 then
-                v.RxOut(RxNum_v) := RxRpdo_Data;          -- PD-RX-03
-                v.RxEvt(RxNum_v) := '1';
-            elsif T_v <= 240 then
-                v.Hold(RxNum_v)  := RxRpdo_Data;          -- PD-RX-04, the last value wins
-                v.HoldV(RxNum_v) := '1';
-            end if;                                       -- 241 to 253: not processed (PD-RX-05)
-        end if;
 
         -- *** Transmit PDOs (PD-TX-01 to PD-TX-09) ***
         for N in 0 to NumTpdo_g - 1 loop
