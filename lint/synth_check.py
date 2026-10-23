@@ -73,6 +73,11 @@ def configs():
         cfg.append(("ocan_od", {name: "256"}, f'override for generic "{name}" is out of bounds'))
     # ocan_sdo has no generics
     cfg.append(("ocan_sdo", {}, None))
+    # ocan_pdo: every number of receive and of transmit PDOs from 0 to 4
+    for n in range(0, 5):
+        cfg.append(("ocan_pdo", {"NumRpdo_g": str(n), "NumTpdo_g": str(4 - n)}, None))
+    cfg.append(("ocan_pdo", {"NumRpdo_g": "0", "NumTpdo_g": "0"}, None))
+    cfg.append(("ocan_pdo", {}, None))
     return cfg
 
 
