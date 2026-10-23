@@ -11,9 +11,9 @@ VHDL Library. The core is vendor-independent VHDL-2008; buffers use the fault-to
 
 **In development.** The architecture is defined. The data link (`ocan_link`, nominal and redundant bus), the frame
 dispatcher (`ocan_dispatch`), the network management (`ocan_nmt`), the bus redundancy management (`ocan_redundancy`),
-the time distribution (`ocan_time`) and the object dictionary (`ocan_od`) are implemented and verified with GHDL; the
-SDO server, the PDOs and the top level follow. The [roadmap](docs/roadmap.md) lists the development phases and the
-state of every module.
+the time distribution (`ocan_time`), the object dictionary (`ocan_od`) and the SDO server (`ocan_sdo`) are
+implemented and verified with GHDL; the PDOs and the top level follow. The [roadmap](docs/roadmap.md) lists the
+development phases and the state of every module.
 
 ## Documentation
 

@@ -28,7 +28,7 @@ tables names the section of \[CiA301\] that defines the protocol.
 | SD-IF-03 | The SDO server shall read and write the objects through the access interface of `ocan_od` (OD-IF-01): one access at a time, with the index, the sub-index and, for a write, the data bytes and their number (0 when not indicated), and take its answer. | 7.2.4.3 | 6.8a, 8.3.1c |
 | SD-IF-04 | The SDO server shall take the SDO enable and the reset application and reset communication events of `ocan_nmt` (NM-IF-07). | 7.3.2.2 | 6.5.4a |
 | SD-IF-05 | The SDO server shall take a one-cycle tick every millisecond, the tick of the other blocks. | none | none |
-| SD-IF-06 | The SDO server shall provide events for a request that it does not process (SD-PR-02, SD-PR-09), for an abort that it sends, for an abort that it receives and for a reply without completion (SD-TX-02), and the state "a segmented transfer is open" (SD-RS-03). | none | 6.1a |
+| SD-IF-06 | The SDO server shall provide events for a request that it does not process (SD-PR-02, SD-PR-09), for an abort frame that it sent, for an abort request of the client that ended an open transfer or the processing of a request, for a reply without completion (SD-TX-02) and for an access of `ocan_od` without an answer (SD-TX-04), and the state "a segmented transfer is open" (SD-RS-03). An abort frame was sent when its reply completed as sent; a rejected, aborted or not completed abort frame gives no event. An abort request that is ignored (SD-PR-07) gives no event. | none | 6.1a |
 | SD-IF-07 | The SDO server shall take a request event in every clock cycle, without back pressure (D11). | none | none |
 
 ### 2.2 Protocol (SD-1)
@@ -50,7 +50,7 @@ tables names the section of \[CiA301\] that defines the protocol.
 | ID | Requirement | CiA 301 | ECSS |
 | --- | --- | --- | --- |
 | SD-DL-01 | An expedited initiate download request (e = 1) shall write the object with 4 - n data bytes when the size is indicated (s = 1), and with the number of bytes not indicated (s = 0). The reply is the initiate download response with the index and sub-index of the request, or an abort with the abort code of `ocan_od`. | 7.2.4.3.3 | 6.1a, 8.3.1c |
-| SD-DL-02 | A segmented initiate download request (e = 0) with an indicated size (s = 1) of 1 to 8 bytes shall open a segmented download, answered with the initiate download response. A size above 8 shall be answered with an abort, code 0607 0012h; a request without an indicated size (s = 0) with an abort, code 0607 0010h (Table 11-1). | 7.2.4.3.3, 7.2.4.3.17 | 11.1 |
+| SD-DL-02 | A segmented initiate download request (e = 0) with an indicated size (s = 1) of 1 to 8 bytes shall open a segmented download, answered with the initiate download response. A size above 8 shall be answered with an abort, code 0607 0012h; a size of 0 and a request without an indicated size (s = 0) with an abort, code 0607 0010h (Table 11-1). | 7.2.4.3.3, 7.2.4.3.17 | 11.1 |
 | SD-DL-03 | Each download segment request of an open segmented download shall add its 7 - n data bytes to the transfer and be answered with the download segment response; more than 8 bytes in total shall be answered with an abort, code 0504 0005h (out of memory), and end the transfer. | 7.2.4.3.4 | 6.1a |
 | SD-DL-04 | The last segment (c = 1) shall end the segmented download: when the number of bytes differs from the indicated size, with an abort, code 0607 0010h; otherwise with a write of the object with that number of bytes, answered with the download segment response or with an abort with the abort code of `ocan_od`. | 7.2.4.3.4, 7.2.4.3.17 | 6.1a, 8.3.1c |
 
@@ -58,7 +58,7 @@ tables names the section of \[CiA301\] that defines the protocol.
 
 | ID | Requirement | CiA 301 | ECSS |
 | --- | --- | --- | --- |
-| SD-UL-01 | An initiate upload request shall read the object. An abort code of `ocan_od` shall be answered with an abort with that code. An object of 1 to 4 bytes shall be answered with the expedited initiate upload response (e = 1, s = 1, n = 4 - the number of bytes) and its data. An object of 5 to 8 bytes shall open a segmented upload, answered with the initiate upload response with the indicated size (e = 0, s = 1, the size in bytes 4 to 7). | 7.2.4.3.6 | 6.1a, 11.1 |
+| SD-UL-01 | An initiate upload request shall read the object. An abort code of `ocan_od` shall be answered with an abort with that code. An object of 1 to 4 bytes shall be answered with the expedited initiate upload response (e = 1, s = 1, n = 4 - the number of bytes) and its data. An object of 5 to 8 bytes shall open a segmented upload, answered with the initiate upload response with the indicated size (e = 0, s = 1, the size in bytes 4 to 7). An answer of `ocan_od` with 0 or more than 8 data bytes shall be answered with an abort, code 0800 0000h (general error). | 7.2.4.3.6 | 6.1a, 11.1 |
 | SD-UL-02 | Each upload segment request of an open segmented upload shall be answered with the upload segment response with the next up to 7 data bytes, n = the number of bytes without data and c = 1 on the last segment, which ends the transfer. | 7.2.4.3.7 | 6.1a |
 
 ### 2.5 Reply (SD-3)
@@ -68,6 +68,7 @@ tables names the section of \[CiA301\] that defines the protocol.
 | SD-TX-01 | Every reply shall have the DLC 8; bytes without content are 0. An abort shall have the command specifier 4, the index and sub-index of SD-PR-01 and the abort code. | 7.2.4.3.17 | 6.1a |
 | SD-TX-02 | At most one reply shall be outstanding. A reply that `ocan_dispatch` has taken and that does not complete within 256 ticks shall end the wait with the event of SD-IF-06, without a repetition. A completion while no reply is outstanding shall be ignored. | none | none |
 | SD-TX-03 | A reply that completes as aborted shall end the transfer. | 7.2.4.2.16 | 8.3.3e |
+| SD-TX-04 | An access of `ocan_od` without an answer within 512 ticks shall end the processing with an abort, code 0800 0000h (general error), the code of the time-out of the application port (OD-AP-03), and with the event of SD-IF-06; after an abort request, a cleared SDO enable or a reset event during the access (SD-PR-09, SD-RS-01, SD-RS-02) without a reply. The bound lies above the answer time of `ocan_od` (OD-IF-01, OD-AP-03). | none | none |
 
 ### 2.6 NMT state and status (SD-1)
 
@@ -87,8 +88,10 @@ tables names the section of \[CiA301\] that defines the protocol.
 | Segment without an open transfer of its direction | SD-1 | Abort 0504 0001h; a transfer of the other direction ends |
 | Toggle bit not alternated | SD-1 | Abort 0503 0000h; the transfer ends |
 | Request during the processing of another one | SD-1 | Not processed; event; an abort request ends the processing |
-| Segmented download larger than 8 bytes, without a size, or with a size that the segments do not match | SD-2 | Abort 0607 0012h, 0607 0010h, 0504 0005h |
+| Segmented download larger than 8 bytes, with a size of 0 or without a size, or with a size that the segments do not match | SD-2 | Abort 0607 0012h, 0607 0010h, 0504 0005h |
 | Abort code of `ocan_od` | SD-2 | Abort with that code |
+| Answer of `ocan_od` to a read with 0 or more than 8 data bytes | SD-2 | Abort 0800 0000h |
+| Access of `ocan_od` without an answer within 512 ticks | SD-2 | Abort 0800 0000h; event |
 | Reply without completion within 256 ticks | SD-3 | Wait ended; event; not repeated |
 | Reply aborted by the dispatch | SD-3 | The transfer ends |
 | SDO enable cleared, reset application, reset communication | SD-1 | Transfer and processing end without a reply |

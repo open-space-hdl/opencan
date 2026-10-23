@@ -1068,9 +1068,9 @@ begin
                 Ab_v := x"06010002";
             elsif Acc_Write = '0' and not O_v.Rd then
                 Ab_v := x"06010001";
-            elsif Acc_Write = '1' and Len_v > O_v.Size then
+            elsif Acc_Write = '1' and Len_v /= 0 and Len_v > O_v.Size then
                 Ab_v := x"06070012";
-            elsif Acc_Write = '1' and Len_v < O_v.Size then
+            elsif Acc_Write = '1' and Len_v /= 0 and Len_v < O_v.Size then
                 Ab_v := x"06070013";
             elsif Acc_Write = '1' and O_v.Pre and Nmt_State /= NmtPreOp_c then
                 Ab_v := x"08000022";
@@ -1684,6 +1684,25 @@ begin
 
             -- *** TC-OD-04: number of data bytes ***
             elsif run("test_lengths") then
+
+                -- The number of bytes not indicated (0): the size of the data type, no length check (OD-WR-02)
+                wr(16#1005#, 0, 16#80#, 0, x"00000000", "1005h, number not indicated");
+                wr(16#1017#, 0, 16#0BB8#, 0, x"00000000", "1017h, number not indicated");
+                wr32(16#1016#, 1, x"000307D0", x"00000000", "1016h, number 4");
+                acc('1', 16#1016#, 1, x"FFFFFFFF000307D1", 0);
+                check_value(Ab_v, x"00000000", ERROR, "1016h, number not indicated, upper bytes ignored");
+
+                for S in 1 to 4 loop
+                    wr(16#2000#, S, 1, 0, x"00000000", "2000h, number not indicated");
+                end loop;
+
+                acc('1', 16#2001#, 0, x"FF11223344556677", 0);
+                check_value(Ab_v, x"00000000", ERROR, "2001h, number not indicated");
+                if NumTpdo_g > 0 then
+                    wr(16#1800#, 2, 254, 0, x"00000000", "1800h sub-index 02h, number not indicated");
+                end if;
+                rd(16#1017#, 0, x"00000000", "1017h read back");
+                rd(16#1016#, 1, x"00000000", "1016h read back");
 
                 for L in 1 to 8 loop
                     -- 1005h, 4 bytes, the value 080h

@@ -50,7 +50,7 @@ Checkers that run in every test:
 | `test_read_all` (TC-OD-01) | Configurations `default` and `values`: every object and sub-index of table 1 read, with its value, number of bytes and abort code 0; 1016h, 1017h, 2000h and the transmission types after writes | OD-OB-01, OD-OB-03, OD-OB-04, OD-IF-01 |
 | `test_absent` (TC-OD-02) | Accesses to absent indices of 0000h to 0FFFh, 1000h to 1FFFh, 2000h to 2002h and A000h to FFFFh, to absent sub-indices of every object, and to the objects of absent PDOs in `rpdo0` to `rpdo3`, `tpdo0` to `tpdo3` and `notime` | OD-OB-02, OD-OB-01 |
 | `test_access_types` (TC-OD-03) | A write of every ro and const object, a read of 2001h | OD-WR-01 |
-| `test_lengths` (TC-OD-04) | A write of every writable object with 1 to 8 data bytes | OD-WR-02, OD-WR-09 |
+| `test_lengths` (TC-OD-04) | A write of every writable object with 1 to 8 data bytes, and with the number not indicated (0): the size of the data type is taken, the bytes above it are ignored | OD-WR-02, OD-WR-09 |
 | `test_states` (TC-OD-05) | Writes of every writable object in Initialisation, Pre-operational, Operational and Stopped | OD-WR-03, OD-IF-07 |
 | `test_cob_id_rules` (TC-OD-06) | Every COB-ID: change while valid and while not valid; bits 29 and 30 of the PDOs and bit 30 of 1005h; bits 28 to 11; every restricted range of \[CiA301\] table 40 and the free ranges of clause 9.5a at both ends and inside; a duplicate of every other valid entry, also through the NODE-ID dependent identifiers; the abort order of architecture section 2.3 with several failing checks | OD-WR-04, OD-WR-05, OD-WR-09 |
 | `test_types` (TC-OD-07) | Every value 0 to 255 written to every transmission type | OD-WR-06 |

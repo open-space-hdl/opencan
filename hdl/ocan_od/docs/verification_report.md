@@ -53,7 +53,7 @@ QuestaSim: not run yet; it runs with the first release of OpenCAN.
 
 ## 4. Negative tests and mutations
 
-Every checker of the plan has a negative test (verification plan, section 5). In addition, 51 deliberate faults of
+Every checker of the plan has a negative test (verification plan, section 5). In addition, 52 deliberate faults of
 the RTL were each simulated with the tests that must detect them, and every one made a test fail:
 
 | Fault | Detected by |
@@ -64,6 +64,7 @@ the RTL were each simulated with the tests that must detect them, and every one 
 | Read of a write-only object taken | TC-OD-03 |
 | Too many bytes taken | TC-OD-04 |
 | Too few bytes taken | TC-OD-04 |
+| Number of bytes 0 refused | TC-OD-04 |
 | COB-IDs written outside Pre-operational | TC-OD-05 |
 | Parameters written in Stopped and Initialisation | TC-OD-05 |
 | No lock of a valid COB-ID | TC-OD-06 |
@@ -114,6 +115,12 @@ The first mutation run detected 50 of the faults. "An outstanding request answer
 bench, not of the RTL: TC-OD-15 reset while no response was pending, where the fault has no effect. TC-OD-15 now
 also resets in the cycle of the response of the user logic, and the fault is detected. The RTL is unchanged since the
 first run, and the bench gained stimuli and checks only, so the 50 detections of that run stand.
+
+The write whose number of bytes is not indicated (OD-IF-01, OD-WR-02) later changed the two length checks of the RTL
+and of the reference model and extended TC-OD-04, the only test that writes with the number 0. The three faults of
+the length checks, among them "Number of bytes 0 refused", ran again on the changed RTL and bench and were all
+detected. TC-OD-04 detects no other fault, and the other tests write with 1 to 8 bytes only, where both checks are
+unchanged, so the other detections stand.
 
 The first regression run had five failures, all errors of the bench: an invalidation of a PDO that changed its
 identifier, which OD-WR-04 refuses, a leftover abort code of the responder and a race in reading an event counter.

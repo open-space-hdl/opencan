@@ -5,3 +5,4 @@ hdl/ocan_nmt/src/ocan_nmt.vhd
 hdl/ocan_redundancy/src/ocan_redundancy.vhd
 hdl/ocan_time/src/ocan_time.vhd
 hdl/ocan_od/src/ocan_od.vhd
+hdl/ocan_sdo/src/ocan_sdo.vhd
