@@ -17,7 +17,9 @@ that are not used.
 `SyncOk` is `RxSync_Valid` with `RxSync_Dlc` 0 or 1 (PD-SY-01). The register `SyncEvt` is `SyncOk` of the previous
 cycle and is the port `Sync_Valid` (PD-SY-02). The counter byte of a SYNC is not an input of `ocan_pdo`.
 
-`Nmt_EnaPdo` and `Nmt_ResetComm` act in the cycle in which they are present:
+`Nmt_EnaPdo` and `Nmt_ResetComm` act in the cycle in which they are present. `Stat_PdoEnabled` is `Nmt_EnaPdo`
+of the same cycle (a register output of `ocan_nmt`), so that a request of the user logic in a cycle with
+`Stat_PdoEnabled` = '0' is one without effect (PD-IF-07, PD-RS-01):
 
 - `Nmt_EnaPdo` = '0': no receive PDO is processed, no transmit PDO requested, the held data and the waiting requests
   of transmission type 0 are cleared in every such cycle (PD-RS-01, PD-RS-02). The SYNC counts continue.
@@ -126,6 +128,7 @@ No upset of a single register silences `ocan_pdo`: every state ends by itself or
 | `Rpdo_Valid`, `Rpdo_Data` | Out | 4, 256 | - | Receive PDOs to the user logic: the event and the data last passed |
 | `Tpdo_Req`, `Tpdo_Data` | In | 4, 256 | 0 | Transmit PDOs of the user logic: the request and the data |
 | `Stat_TpdoBusy` | Out | 4 | - | A request of the transmit PDO is pending (PD-TX-07) |
+| `Stat_PdoEnabled` | Out | 1 | - | The PDO enable as `ocan_pdo` uses it (PD-IF-07) |
 | `Evt_TpdoSent`, `Evt_TpdoAborted` | Out | 4 | - | Completion of a transmit PDO (PD-TX-09) |
 | `Err_RxLength`, `Err_TxBusy`, `Err_TxTimeout` | Out | 4 | - | Events of PD-RX-02, PD-TX-07 and PD-TX-08 |
 

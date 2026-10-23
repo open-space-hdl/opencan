@@ -33,8 +33,8 @@ Tests observe the ports of `ocan_pdo`, the buses and the model logs only.
 Checkers that run in every test of the direct bench:
 
 - every output (`TxTpdo_Valid`, `TxTpdo_Dlc`, `TxTpdo_Data`, `Rpdo_Valid`, `Rpdo_Data`, `Sync_Valid`,
-  `Stat_TpdoBusy`, `Evt_TpdoSent`, `Evt_TpdoAborted`, `Err_RxLength`, `Err_TxBusy`, `Err_TxTimeout`) equals the
-  reference in every cycle;
+  `Stat_TpdoBusy`, `Stat_PdoEnabled`, `Evt_TpdoSent`, `Evt_TpdoAborted`, `Err_RxLength`, `Err_TxBusy`,
+  `Err_TxTimeout`) equals the reference in every cycle;
 - `TxTpdo_Valid` and `TxTpdo_Data` of a request stay stable until `TxTpdo_Ready`; never a second request of a PDO
   before the completion or the time-out of the first one.
 
@@ -52,7 +52,7 @@ Checkers that run in every test of the direct bench:
 | `test_tpdo_event` (TC-PD-08) | Types 254 and 255: a PDO one cycle after each request with the data of the request cycle; SYNCs without effect; every type from 241 to 253: no PDO at requests and SYNCs; no PDO without a trigger over 2000 ticks (no event timer) | PD-TX-04, PD-TX-05, PD-TX-06, PD-IF-03 |
 | `test_tpdo_busy` (TC-PD-09) | Requests and due SYNCs while a request is offered and while it is taken: not requested, `Err_TxBusy`; a request and a due SYNC in the cycle of `TxTpdo_Done`, of `TxTpdo_Aborted` and of the reject path: requested with the new data; `TxTpdo_Valid` and the data unchanged while `TxTpdo_Ready` is held off for 1000 cycles | PD-TX-07, PD-IF-07 |
 | `test_tpdo_handshake` (TC-PD-10) | Delays of `TxTpdo_Ready`, the reject path, `TxTpdo_Aborted` after the take, `TxTpdo_Done`: `Evt_TpdoSent` and `Evt_TpdoAborted`, no repetition; no completion: `Err_TxTimeout` 256 ticks after the take, no repetition, the next request served, the other PDOs unaffected; completions while no request waits (idle, offered without `TxTpdo_Ready`, late after the time-out): ignored | PD-TX-08, PD-TX-09, PD-IF-05, PD-IF-07 |
-| `test_nmt` (TC-PD-11) | `Nmt_EnaPdo` = '0': receive PDOs not processed, due PDOs not requested without an event, requests without effect, the SYNC counts continue (the phase after `Nmt_EnaPdo` = '1' again); the exit from Operational with held synchronous data of every PDO: not passed at the next SYNC, also when the SYNC comes in the cycle of the exit; with a request of type 0 waiting: no PDO at the next SYNC and none after the return to Operational; a request offered and taken at the exit: completes as the responder reports it | PD-RS-01, PD-RS-02, PD-IF-04 |
+| `test_nmt` (TC-PD-11) | `Stat_PdoEnabled` equal to `Nmt_EnaPdo` in every cycle; `Nmt_EnaPdo` = '0': receive PDOs not processed, due PDOs not requested without an event, requests without effect, the SYNC counts continue (the phase after `Nmt_EnaPdo` = '1' again); the exit from Operational with held synchronous data of every PDO: not passed at the next SYNC, also when the SYNC comes in the cycle of the exit; with a request of type 0 waiting: no PDO at the next SYNC and none after the return to Operational; a request offered and taken at the exit: completes as the responder reports it | PD-RS-01, PD-RS-02, PD-IF-04, PD-IF-07 |
 | `test_reset_comm` (TC-PD-12) | `Nmt_ResetComm` with held data, a waiting request of type 0 and counts in progress: the counts restart, the held data and the request discarded; a receive PDO and a SYNC in the cycle of the event: not processed, not counted; the data at the port kept; an offered and a taken request complete as the responder reports it | PD-RS-03, PD-IF-04 |
 | `test_reset` (TC-PD-13) | `Rst` with held data, pending requests and counts in progress: no request pending, the data at the port 0, the counts from the start | PD-RS-04 |
 | `test_back_to_back` (TC-PD-14) | SYNC and receive PDO events 46 bit times apart at 1 Mbit/s and in consecutive cycles; all four transmit PDOs due at the same SYNC: four requests in the same cycle; all four held receive PDOs passed in the same cycle | PD-IF-08, PD-RX-04, PD-TX-02 |
@@ -71,7 +71,7 @@ Checkers that run in every test of the direct bench:
 | PD-IF-04 | TC-PD-11, TC-PD-12 |
 | PD-IF-05 | TC-PD-10 |
 | PD-IF-06 | TC-PD-01, TC-PD-06 |
-| PD-IF-07 | TC-PD-02, TC-PD-09, TC-PD-10 |
+| PD-IF-07 | TC-PD-02, TC-PD-09, TC-PD-10, TC-PD-11 |
 | PD-IF-08 | TC-PD-14 |
 | PD-SY-01 | TC-PD-03, TC-PD-05, TC-PD-15, TC-PD-16 |
 | PD-SY-02 | TC-PD-05, TC-PD-17 |
