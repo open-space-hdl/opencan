@@ -36,7 +36,7 @@ cycle (PD-RX-06), when `Nmt_EnaPdo` is '1' and `Nmt_ResetComm` is '0':
 
 | Condition | Action |
 | --- | --- |
-| `RxRpdo_Dlc` below 8 | `Err_RxLength` of PDO n (PD-RX-02) |
+| `RxRpdo_Dlc` below 8, for every T | `Err_RxLength` of PDO n (PD-RX-02) |
 | T = 254 or 255 | `RxOut` := the data, `RxEvt` := '1' (PD-RX-03) |
 | T = 0 to 240 | `Hold` := the data, `HoldV` := '1' (PD-RX-04) |
 | T = 241 to 253 | None (PD-RX-05) |
@@ -67,6 +67,12 @@ request of the user logic that waits for the SYNC). T is the transmission type o
 - `SyncCnt` and `ReqPend` are cleared after the hardware reset, at `Nmt_ResetComm` and when T differs from
   `TypeReg`; a SYNC in the cycle of one of these events is not counted and makes no PDO due (PD-TX-02). The compare
   with >= ends a count above T - 1 after an upset at the next SYNC.
+- `Nmt_ResetComm` and a change of T clear only the state of the previous cycles: a `Tpdo_Req` of the same cycle
+  acts with T of that cycle, so that with T = 0 it sets `ReqPend` and with T = 254 or 255 the PDO falls due
+  (PD-TX-03). A request with `Stat_PdoEnabled` = '1' is therefore never lost without an event. `ocan_time` differs
+  here: a request in the cycle of these events has no effect there (architecture of `ocan_time`, section 5.1), a
+  known difference. In the system the reset communication is without a request in any case: `ocan_nmt` clears the
+  PDO enable in that cycle.
 - `ReqPend` is set by `Tpdo_Req` with T = 0 and `Nmt_EnaPdo` = '1'. In the cycle of a `SyncOk` the PDO falls due
   with the `ReqPend` of the previous cycles, and a `Tpdo_Req` of that cycle sets `ReqPend` for the next SYNC
   (PD-TX-03). `ReqPend` is cleared when the PDO falls due, when T is not 0 and while `Nmt_EnaPdo` is '0'.
