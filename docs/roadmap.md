@@ -40,5 +40,5 @@ all modules, with and without code coverage, for the first release.
 | `ocan_time` | c | Local SCET, Spacecraft Time PDO consumer, Local Time PDO producer, sample at SYNC | 122 of 122 runs pass | 33: 32 detected, 1 by design review |
 | `ocan_od` | c | Object dictionary of the communication profile and of clause 8, object access port | 36 of 36 runs pass | 52, all detected |
 | `ocan_sdo` | c | SDO server: expedited and segmented transfer, access of the object dictionary | 17 of 17 runs pass | 73, all detected |
-| `ocan_pdo` | c | Receive and transmit PDOs, transmission types, SYNC consumer | Open | Open |
+| `ocan_pdo` | c | Receive and transmit PDOs, transmission types, SYNC consumer | 26 of 26 runs pass | 57, all detected |
 | `ocan_core` | c | Top level, generics and ports | Open | Open |
