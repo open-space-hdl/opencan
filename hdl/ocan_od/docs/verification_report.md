@@ -48,7 +48,7 @@ QuestaSim: not run yet; it runs with the first release of OpenCAN.
 | `MasterNodeId_g` | 0 to 127 | 1, 127 | 1, 127 |
 | `Bdefault_g` | 0, 1 | both | both |
 | `Ttoggle_g`, `Ntoggle_g` | 0 to 255 | 1, 3, 0, 255 | the defaults, 255 and 0 |
-| `RpdoType_g`, `TpdoType_g`, `SctType_g`, `LtpType_g` | 0 to 240, 254, 255 | 254, 0, 240, 255, 1 | 254, 255, 0 |
+| `RpdoType_g`, `TpdoType_g`, `SctType_g`, `LtpType_g` | 0 to 240, 254, 255 | 254, 0, 240, 255, 1 | 254, 255, 0, 240; 241, 253 and 256 rejected (TC-OD-21) |
 | `SctCobId_g`, `LtpCobId_g` | 0 to 2047, not restricted, not free, not equal | 0, 0F0h, 1F5h | 0, 4FFh, 500h; 581h, 7FFh and two equal values rejected (TC-OD-21) |
 
 ## 4. Negative tests and mutations
@@ -130,5 +130,5 @@ The RTL answered as the specification requires in each case.
 
 All 20 test cases pass in all 36 runs, and TC-OD-21 passes in `lint/synth_check.py`; every requirement of the
 specification is covered by the verification plan. VSG reports no errors and no warnings, and the GHDL synthesis of
-the nine valid configurations of `lint/synth_check.py` has no inferred latch; the five inconsistent ones are rejected
-with their messages.
+the ten valid configurations of `lint/synth_check.py` has no inferred latch; the seventeen inconsistent ones are
+rejected with their messages.

@@ -198,8 +198,9 @@ transmit PDOs 1 to 4 have `Rel` = '1' and are valid; the transmission types are 
 The generics of section 4 of the [specification](specification.md); the 32-bit values (`DeviceType_g`,
 `VendorId_g`, `ProductCode_g`, `Revision_g`, `SerialNumber_g`) are `std_logic_vector(31 downto 0)`, the others
 `natural` with the ranges of the specification. Assertions refuse at elaboration: `SctCobId_g` or `LtpCobId_g`
-that is not 0 and restricted or free, two equal non-zero identifiers among them, and `NumRpdo_g` or `NumTpdo_g`
-above 3 with `MinimalSet_g` and `TimePdos_g`.
+that is not 0 and restricted or free, two equal non-zero identifiers among them, `NumRpdo_g` or `NumTpdo_g`
+above 3 with `MinimalSet_g` and `TimePdos_g`, and a transmission type (`RpdoType_g`, `TpdoType_g`, `SctType_g`,
+`LtpType_g`) from 241 to 253, which the declared range 0 to 255 does not exclude (`typeOk`, the rule of OD-WR-06).
 
 ## 10. Timing and behaviour
 

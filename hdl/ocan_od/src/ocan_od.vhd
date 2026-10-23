@@ -737,6 +737,19 @@ begin
     assert SctCobId_g = 0 or SctCobId_g /= LtpCobId_g
         report "ocan_od: SctCobId_g and LtpCobId_g are equal"
         severity failure;
+    -- The range of the transmission types (specification, section 4); the declared range ends at 255
+    assert typeOk(to_unsigned(RpdoType_g, 8))
+        report "ocan_od: RpdoType_g is not a transmission type of 0 to 240, 254 or 255"
+        severity failure;
+    assert typeOk(to_unsigned(TpdoType_g, 8))
+        report "ocan_od: TpdoType_g is not a transmission type of 0 to 240, 254 or 255"
+        severity failure;
+    assert typeOk(to_unsigned(SctType_g, 8))
+        report "ocan_od: SctType_g is not a transmission type of 0 to 240, 254 or 255"
+        severity failure;
+    assert typeOk(to_unsigned(LtpType_g, 8))
+        report "ocan_od: LtpType_g is not a transmission type of 0 to 240, 254 or 255"
+        severity failure;
 
     -----------------------------------------------------------------------------------------------
     -- Compare of the copies of the parameters other than the COB-IDs (OD-PR-03)
