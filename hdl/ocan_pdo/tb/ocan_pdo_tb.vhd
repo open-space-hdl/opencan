@@ -652,24 +652,40 @@ begin
     -----------------------------------------------------------------------------------------------
     p_check : process is
         variable Dlc_v : std_logic_vector(3 downto 0);
+        variable Mis_v : natural := 0;
+
+        -- The first 20 mismatches of a test as alerts, the others only counted: one alert fails the test, and a
+        -- mismatch that lasts does not flood the log
+        procedure mismatch (msg : string) is
+        begin
+            Mis_v := Mis_v + 1;
+            if Mis_v <= 20 then
+                alert(ERROR, msg);
+            elsif Mis_v = 21 then
+                log(ID_SEQUENCER, "further mismatches of the reference model in this test are not reported");
+            end if;
+        end procedure;
 
         procedure cmp (dut : std_logic_vector; exp : std_logic_vector; name : string) is
         begin
             if dut /= exp then
-                alert(ERROR, name & " = " & to_hstring(dut) & ", reference model " & to_hstring(exp));
+                mismatch(name & " = " & to_hstring(dut) & ", reference model " & to_hstring(exp));
             end if;
         end procedure;
 
         procedure cmp (dut : std_logic; exp : std_logic; name : string) is
         begin
             if dut /= exp then
-                alert(ERROR, name & " = " & std_logic'image(dut) & ", reference model " & std_logic'image(exp));
+                mismatch(name & " = " & std_logic'image(dut) & ", reference model " & std_logic'image(exp));
             end if;
         end procedure;
 
         constant Dlc8_c : std_logic_vector(3 downto 0) := "1000";
     begin
         wait until falling_edge(Clk);
+        if not CheckEn then
+            Mis_v := 0;
+        end if;
         if CheckEn and Rst = '0' then
             cmp(Sync_Valid, ExpSync, "Sync_Valid");
             cmp(Rpdo_Valid, ExpRpdoValid, "Rpdo_Valid");
@@ -698,11 +714,25 @@ begin
     -- The transmit handshake: a request stays with its data until TxTpdo_Ready, and no second request of a PDO
     -- before the completion or the time-out of the first one (PD-TX-07)
     p_handshake : process (Clk) is
-        variable Offer_v : Vec4_t   := (others => '0');
-        variable Taken_v : Bool_a   := (others => false);
-        variable Data_v  : Vec256_t := (others => '0');
+        variable Offer_v : Vec4_t  := (others => '0');
+        variable Taken_v : Bool_a  := (others => false);
+        variable Viol_v  : natural := 0;
+
+        -- The first 20 violations of a test as alerts, the others only counted
+        procedure violation (msg : string) is
+        begin
+            Viol_v := Viol_v + 1;
+            if Viol_v <= 20 then
+                alert(ERROR, msg);
+            end if;
+        end procedure;
+
+        variable Data_v : Vec256_t := (others => '0');
     begin
         if rising_edge(Clk) then
+            if not CheckEn then
+                Viol_v := 0;
+            end if;
 
             for N in 0 to 3 loop
                 if Rst = '1' or not CheckEn then
@@ -710,10 +740,10 @@ begin
                     Taken_v(N) := false;
                 else
                     if Offer_v(N) = '1' and (TxTpdo_Valid(N) = '0' or pdo(TxTpdo_Data, N) /= pdo(Data_v, N)) then
-                        alert(ERROR, "request of PDO " & integer'image(N + 1) & " changed before TxTpdo_Ready");
+                        violation("request of PDO " & integer'image(N + 1) & " changed before TxTpdo_Ready");
                     end if;
                     if Taken_v(N) and TxTpdo_Valid(N) = '1' and Err_TxTimeout(N) = '0' then
-                        alert(ERROR, "second request of PDO " & integer'image(N + 1) & " before the completion");
+                        violation("second request of PDO " & integer'image(N + 1) & " before the completion");
                     end if;
                     if TxTpdo_Done(N) = '1' or TxTpdo_Aborted(N) = '1' or Err_TxTimeout(N) = '1' then
                         Taken_v(N) := false;
@@ -861,7 +891,7 @@ begin
             while not ModelIdle or not RespIdle or TxTpdo_Valid /= "0000" loop
                 wait until rising_edge(Clk);
                 N_v := N_v + 1;
-                if N_v > 200000 then
+                if N_v > 20000 then
                     alert(ERROR, "timeout: the PDO block does not become idle");
                     exit;
                 end if;
