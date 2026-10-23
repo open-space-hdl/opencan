@@ -88,7 +88,7 @@ specifications take over.
 | `ocan_redundancy` | Requested bus Bdefault, start-up bus selection (RM-SL-01) | No change of the active bus, Ctoggle and the bus selection process (RM-SL-08) | As reset node |
 | `ocan_od` | Every object to its power-on value | Manufacturer-specific and device profile areas, then the communication profile area, to their power-on values; object 2000h is kept | Communication profile area (1000h to 1FFFh) to its power-on values |
 | `ocan_sdo` | No transfer in progress | A transfer in progress ends without a reply | As reset node |
-| `ocan_pdo` | No pending request, SYNC counts cleared | SYNC counts, synchronous receive data not yet applied and pending transmit requests cleared; the data last passed to the user logic are kept | As reset node |
+| `ocan_pdo` | No pending request, SYNC counts cleared, the data of the receive PDOs 0 (PD-RS-04) | The SYNC counts restart; synchronous receive data not yet passed and requests of transmission type 0 that wait for the SYNC are discarded; a request that `ocan_dispatch` has taken completes. The data last passed to the user logic are kept (PD-RS-03) | As reset node |
 | `ocan_time` | Local time 0, set flag cleared, no SYNC sample (TM-CT-04) | The SYNC count of the Local Time PDO restarts and a request that waits for the next SYNC is discarded; a request that `ocan_dispatch` has taken completes. The local time, the set flag and the SYNC sample are kept (TM-CT-04, TM-IF-07) | As reset node |
 
 NOTE: The applicability matrix of clause 11 states for reset node that the whole device connected with the CAN
