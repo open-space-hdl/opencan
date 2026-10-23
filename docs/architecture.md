@@ -41,6 +41,9 @@ the standard to a module or marks it out of scope.
 - The Redundancy Master, NMT master, SYNC producer and time producer roles (D1).
 - The emergency object of clause 6.4 (D9) and the spacecraft UTC of clauses 7.1.1b and 7.1.3 (D5).
 - SDO block transfer and dynamic PDO mapping (D3, D7).
+- The inhibit time and the event timer of the PDOs, optional parameters of \[CiA301\] (not implemented,
+  optional; clauses 9.4.1d and 9.4.4b forbid them in the minimal set), the SYNC counter and the synchronous
+  window (specification of `ocan_pdo`).
 
 ### Target technology
 
