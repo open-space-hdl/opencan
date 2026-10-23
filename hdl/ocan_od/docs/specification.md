@@ -138,7 +138,7 @@ transmit PDOs; they belong to the user logic (D7) and are reached through the ap
 | --- | --- | --- | --- |
 | OD-MS-01 | With `MinimalSet_g` = true the object dictionary shall take no access and make no request of the application port: the node has no SDO server (D3), and its object dictionary is fixed. | none | 6.8a, 9.2a, 9.4.10e, 9.4.10f |
 | OD-MS-02 | With `MinimalSet_g` = true the parameters shall have these values: the COB-IDs of the receive and transmit PDOs 1 to 4 those of table 1, valid, with the transmission type 254 (Tables 9-3 to 9-6); the COB-ID of SYNC 0000 0080h (Tables 9-7 and 9-8); the producer heartbeat time, the consumer heartbeat time of the master, Bdefault, Ttoggle and Ntoggle the power-on values of the generics; Ctoggle and the update of Bdefault as in OD-IF-04. | 7.5.2.35, 7.5.2.37 | 8.3.2a, 8.3.3l, 9.3a, 9.4.2, 9.4.4, 9.4.7.3 |
-| OD-MS-03 | With `MinimalSet_g` = true and `TimePdos_g` = true the COB-IDs and the transmission types of the Spacecraft Time PDO and of the Local Time PDO shall be the values of the generics. No object 1404h, 1604h, 1804h, 1A04h or 2000h exists. | none | 7.1.2a, 9.2a, 9.4.10b, 9.4.10c |
+| OD-MS-03 | With `MinimalSet_g` = true and `TimePdos_g` = true the COB-IDs and the transmission types of the Spacecraft Time PDO and of the Local Time PDO shall be the values of the generics. The COB-IDs shall not be 0 (not valid), refused otherwise at elaboration: without an SDO server a time PDO that is not valid could never become valid. No object 1404h, 1604h, 1804h, 1A04h or 2000h exists. | none | 7.1.2a, 9.2a, 9.4.10b, 9.4.10c |
 | OD-MS-04 | With `MinimalSet_g` = true the error register (OD-ER-01) shall be the status output; Bdefault shall be held in two copies (OD-PR-03). | 7.5.2.2 | 6.10d |
 | OD-MS-05 | With `MinimalSet_g` = true and `TimePdos_g` = true, `NumRpdo_g` and `NumTpdo_g` shall be at most 3, refused otherwise at elaboration, so that the node has at most four receive and four transmit PDOs (note to clause 9.3a; interpretation of the specification of `ocan_time`). | none | 9.3a |
 
@@ -172,7 +172,7 @@ transmit PDOs; they belong to the user logic (D7) and are reached through the ap
 | `Bdefault_g` | 0 | 0, 1 | Bdefault |
 | `Ttoggle_g`, `Ntoggle_g` | 1, 3 | 0 to 255 | Ttoggle and Ntoggle (clause 8.3.1) |
 | `RpdoType_g`, `TpdoType_g` | 254 | 0 to 240, 254, 255; other values refused at elaboration | Transmission types of the receive and transmit PDOs 1 to 4 |
-| `SctCobId_g`, `LtpCobId_g` | 0 | 0 to 2047 | Identifiers of the Spacecraft Time PDO and of the Local Time PDO; 0 means not valid |
+| `SctCobId_g`, `LtpCobId_g` | 0 | 0 to 2047; not 0 with `MinimalSet_g` and `TimePdos_g` (OD-MS-03) | Identifiers of the Spacecraft Time PDO and of the Local Time PDO; 0 means not valid |
 | `SctType_g`, `LtpType_g` | 254 | 0 to 240, 254, 255; other values refused at elaboration | Transmission types of the Spacecraft Time PDO and of the Local Time PDO |
 
 ## 5. Interpretation of the standard

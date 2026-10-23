@@ -18,7 +18,8 @@ error register, both events and the request of the application port, and no outp
 holds table 1 of the specification and the write rules, and keeps the two copies of the protected parameters as the
 specification defines them (OD-PR-01 to OD-PR-03).
 
-TC-OD-21, the negative elaboration of OD-MS-05 and of the generic checks, runs in `lint/synth_check.py` (section 3).
+TC-OD-21, the negative elaboration of OD-MS-03, OD-MS-05 and of the generic checks, runs in `lint/synth_check.py`
+(section 3).
 
 QuestaSim: not run yet; it runs with the first release of OpenCAN.
 
@@ -49,7 +50,7 @@ QuestaSim: not run yet; it runs with the first release of OpenCAN.
 | `Bdefault_g` | 0, 1 | both | both |
 | `Ttoggle_g`, `Ntoggle_g` | 0 to 255 | 1, 3, 0, 255 | the defaults, 255 and 0 |
 | `RpdoType_g`, `TpdoType_g`, `SctType_g`, `LtpType_g` | 0 to 240, 254, 255 | 254, 0, 240, 255, 1 | 254, 255, 0, 240; 241, 253 and 256 rejected (TC-OD-21) |
-| `SctCobId_g`, `LtpCobId_g` | 0 to 2047, not restricted, not free, not equal | 0, 0F0h, 1F5h | 0, 4FFh, 500h; 581h, 7FFh and two equal values rejected (TC-OD-21) |
+| `SctCobId_g`, `LtpCobId_g` | 0 to 2047, not restricted, not free, not equal; not 0 with `MinimalSet_g` and `TimePdos_g` | 0, 0F0h, 1F5h | 0, 0F0h, 1F5h, 4FFh, 500h; 581h, 7FFh, two equal values and 0 with `MinimalSet_g` and `TimePdos_g` rejected (TC-OD-21) |
 
 ## 4. Negative tests and mutations
 
@@ -130,5 +131,5 @@ The RTL answered as the specification requires in each case.
 
 All 20 test cases pass in all 36 runs, and TC-OD-21 passes in `lint/synth_check.py`; every requirement of the
 specification is covered by the verification plan. VSG reports no errors and no warnings, and the GHDL synthesis of
-the ten valid configurations of `lint/synth_check.py` has no inferred latch; the seventeen inconsistent ones are
+the ten valid configurations of `lint/synth_check.py` has no inferred latch; the nineteen inconsistent ones are
 rejected with their messages.

@@ -199,7 +199,8 @@ The generics of section 4 of the [specification](specification.md); the 32-bit v
 `VendorId_g`, `ProductCode_g`, `Revision_g`, `SerialNumber_g`) are `std_logic_vector(31 downto 0)`, the others
 `natural` with the ranges of the specification. Assertions refuse at elaboration: `SctCobId_g` or `LtpCobId_g`
 that is not 0 and restricted or free, two equal non-zero identifiers among them, `NumRpdo_g` or `NumTpdo_g`
-above 3 with `MinimalSet_g` and `TimePdos_g`, and a transmission type (`RpdoType_g`, `TpdoType_g`, `SctType_g`,
+above 3 with `MinimalSet_g` and `TimePdos_g`, `SctCobId_g` or `LtpCobId_g` of 0 with `MinimalSet_g` and
+`TimePdos_g` (OD-MS-03), and a transmission type (`RpdoType_g`, `TpdoType_g`, `SctType_g`,
 `LtpType_g`) from 241 to 253, which the declared range 0 to 255 does not exclude (`typeOk`, the rule of OD-WR-06).
 
 ## 10. Timing and behaviour
