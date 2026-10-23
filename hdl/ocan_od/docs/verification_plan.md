@@ -67,7 +67,7 @@ Checkers that run in every test:
 | `test_app_unconnected` (TC-OD-18) | The inputs of the application port at their default values: every access to 2003h to 9FFFh ends with 0602 0000h three cycles after the access | OD-AP-04 |
 | `test_minimal` (TC-OD-19) | Configurations `minimal` and `minimal_time`: no access taken, no request of the application port; the COB-ID table, the transmission types and the other outputs of OD-MS-02 and OD-MS-03; Bdefault with its update and an injected disagreement; the error register | OD-MS-01, OD-MS-02, OD-MS-03, OD-MS-04 |
 | `test_random` (TC-OD-20) | 20000 random accesses (existing and absent objects, valid and invalid values, every length, every NMT state) with random block updates, NODE-ID changes, resets and injected disagreements, compared with the reference in every cycle | OD-IF-01, OD-OB-01, OD-WR-01 to OD-WR-10, OD-PR-03 |
-| TC-OD-21 (`lint/synth_check.py`) | Negative elaboration: `MinimalSet_g` and `TimePdos_g` with `NumRpdo_g` = 4 and with `NumTpdo_g` = 4 are refused, with 3 and 3 accepted; `SctCobId_g` and `LtpCobId_g` restricted, free or equal are refused (architecture section 9) | OD-MS-05 |
+| TC-OD-21 (`lint/synth_check.py`) | Negative elaboration: `MinimalSet_g` and `TimePdos_g` with `NumRpdo_g` = 4 and with `NumTpdo_g` = 4 are refused, with 3 and 3 accepted; `SctCobId_g` and `LtpCobId_g` restricted, free or equal are refused; each of `RpdoType_g`, `TpdoType_g`, `SctType_g` and `LtpType_g` with 241, 253 and 256 is refused, all four with 240 accepted (specification section 4, architecture section 9) | OD-MS-05 |
 
 ## 4. Requirement coverage
 

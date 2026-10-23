@@ -171,9 +171,9 @@ transmit PDOs; they belong to the user logic (D7) and are reached through the ap
 | `MasterHbTime_g` | 1500 | 0 to 65535 | Consumer heartbeat time of the master in ms |
 | `Bdefault_g` | 0 | 0, 1 | Bdefault |
 | `Ttoggle_g`, `Ntoggle_g` | 1, 3 | 0 to 255 | Ttoggle and Ntoggle (clause 8.3.1) |
-| `RpdoType_g`, `TpdoType_g` | 254 | 0 to 240, 254, 255 | Transmission types of the receive and transmit PDOs 1 to 4 |
+| `RpdoType_g`, `TpdoType_g` | 254 | 0 to 240, 254, 255; other values refused at elaboration | Transmission types of the receive and transmit PDOs 1 to 4 |
 | `SctCobId_g`, `LtpCobId_g` | 0 | 0 to 2047 | Identifiers of the Spacecraft Time PDO and of the Local Time PDO; 0 means not valid |
-| `SctType_g`, `LtpType_g` | 254 | 0 to 240, 254, 255 | Transmission types of the Spacecraft Time PDO and of the Local Time PDO |
+| `SctType_g`, `LtpType_g` | 254 | 0 to 240, 254, 255; other values refused at elaboration | Transmission types of the Spacecraft Time PDO and of the Local Time PDO |
 
 ## 5. Interpretation of the standard
 

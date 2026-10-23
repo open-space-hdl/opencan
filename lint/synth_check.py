@@ -64,6 +64,13 @@ def configs():
     cfg.append(("ocan_od", {"SctCobId_g": "1409"}, "SctCobId_g is a restricted or free identifier"))
     cfg.append(("ocan_od", {"LtpCobId_g": "2047"}, "LtpCobId_g is a restricted or free identifier"))
     cfg.append(("ocan_od", {"SctCobId_g": "1000", "LtpCobId_g": "1000"}, "SctCobId_g and LtpCobId_g are equal"))
+    # Transmission types: the bounds of 0 to 240, 254, 255 accepted, 241, 253 and 256 refused
+    types = ("RpdoType_g", "TpdoType_g", "SctType_g", "LtpType_g")
+    cfg.append(("ocan_od", {name: "240" for name in types}, None))
+    for name in types:
+        for value in ("241", "253"):
+            cfg.append(("ocan_od", {name: value}, f"{name} is not a transmission type"))
+        cfg.append(("ocan_od", {name: "256"}, f'override for generic "{name}" is out of bounds'))
     # ocan_sdo has no generics
     cfg.append(("ocan_sdo", {}, None))
     return cfg
