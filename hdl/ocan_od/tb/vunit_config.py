@@ -54,4 +54,4 @@ def configure(lib):
     minimal = tb.test("test_minimal")
     minimal.add_config(name="minimal", generics={"MinimalSet_g": True, "TimePdos_g": False})
     minimal.add_config(name="minimal_time", generics={"MinimalSet_g": True, "TimePdos_g": True, "NumRpdo_g": 3,
-                                                      "NumTpdo_g": 3})
+                                                      "NumTpdo_g": 3, "SctCobId_g": 0x0F0, "LtpCobId_g": 0x1F5})

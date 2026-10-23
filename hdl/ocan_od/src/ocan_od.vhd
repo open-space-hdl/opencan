@@ -728,6 +728,10 @@ begin
     assert not (MinimalSet_g and TimePdos_g and (NumRpdo_g > 3 or NumTpdo_g > 3))
         report "ocan_od: with MinimalSet_g and TimePdos_g, NumRpdo_g and NumTpdo_g must be at most 3 (OD-MS-05)"
         severity failure;
+    -- The minimal set has no SDO server: a time PDO that is not valid could never become valid (OD-MS-03)
+    assert not (MinimalSet_g and TimePdos_g and (SctCobId_g = 0 or LtpCobId_g = 0))
+        report "ocan_od: with MinimalSet_g and TimePdos_g, SctCobId_g and LtpCobId_g must not be 0 (OD-MS-03)"
+        severity failure;
     assert SctCobId_g = 0 or not restricted(to_unsigned(SctCobId_g, 11))
         report "ocan_od: SctCobId_g is a restricted or free identifier"
         severity failure;
