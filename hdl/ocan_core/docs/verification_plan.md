@@ -14,22 +14,23 @@ Tests observe the ports of the core, the buses and the logs of the model nodes o
 
 | Testbench | Harness | DUT and environment |
 | --- | --- | --- |
-| `ocan_core_net_tb` | `ocan_core_net_th` | `ocan_core`, `Clk` 40 MHz, 1 Mbit/s with the bit timing of the plan of `ocan_link`, NODE-ID 5 at the pins; `ocan_tb_can_bus` with the model nodes M1 and M2 on each bus. M1 of the active bus is the Redundancy Master and NMT master, the SYNC and time producer, the SDO client and the peer of the PDOs; M2 acknowledges and can send disturbing frames. A model of the user logic at the PDO port, a model of the application objects 2100h to 2203h at the application port (delays, aborts), and the reset and enable inputs driven by the test |
+| `ocan_core_net_tb` | `ocan_core_net_th` | `ocan_core`, `Clk` 40 MHz, 1 Mbit/s with the bit timing of the plan of `ocan_link`, NODE-ID 5 at the pins; `ocan_tb_can_bus` with the model nodes M1 and M2 on each bus. M1 of the active bus is the Redundancy Master and NMT master, the SYNC and time producer, the SDO client and the peer of the PDOs; M2 acknowledges and can send disturbing frames. A model of the user logic at the PDO port, a model of the application objects 2100h to 2203h at the application port (delays, aborts), and the reset and enable inputs driven by the test. Power-on values of the core: producer heartbeat time 5 ms, master NODE-ID 1 with a heartbeat time of 10 ms (M1 sends its heartbeat every 4 ms), Ttoggle 1, Ntoggle 2, Spacecraft Time PDO 0F0h and Local Time PDO 1F5h, both of type 1 |
 
 | VUnit configuration | Generics | Purpose |
 | --- | --- | --- |
 | `sel_full` | `BusAccess_g` "Selective", `MinimalSet_g` false, `TimePdos_g` true | Clause 6 slave with the time PDOs |
-| `par_full` | "Parallel", false, false | Clause 6 slave without the time PDOs, both controllers |
+| `par_full` | "Parallel", false, false, `Bdefault_g` 1 | Clause 6 slave without the time PDOs, both controllers, start on bus B |
 | `sel_min` | "Selective", true, false | Minimal set |
-| `par_min_time` | "Parallel", true, true, `NumRpdo_g` = `NumTpdo_g` = 3, time COB-IDs 0F0h and 1F5h | Minimal set of a node that keeps time |
+| `par_min_time` | "Parallel", true, true, `NumRpdo_g` = `NumTpdo_g` = 3, `Bdefault_g` 1 | Minimal set of a node that keeps time, start on bus B |
 
-The four configurations give `BusAccess_g`, `MinimalSet_g` and `TimePdos_g` each of their values, and the selection of
-the fault confinement state (architecture, section 5) both bus access architectures. The other generics change the
-structure of single blocks and are simulated in their benches; `lint/synth_check.py` synthesises the core at their
-bounds (TC-CO-10).
+The four configurations give `BusAccess_g`, `MinimalSet_g` and `TimePdos_g` each of their values, the selection of
+the fault confinement state (architecture, section 5) both bus access architectures, and Bdefault both buses. The
+other generics change the structure of single blocks and are simulated in their benches; `lint/synth_check.py`
+synthesises the core at their bounds (TC-CO-10).
 
-Checkers that run in every test: no frame of the node on the inactive bus; every frame of the node is a data frame with
-an 11-bit identifier; no frame of the node while the NODE-ID is not valid.
+Checkers that run in every test: no frame of the node on the inactive bus later than 500 us after a change of the
+active bus (a frame that was in transmission at the change may end); every frame of the node is a data frame with an
+11-bit identifier; no frame of the node while the NODE-ID is not valid.
 
 ## 3. Test cases
 
@@ -43,8 +44,8 @@ an 11-bit identifier; no frame of the node while the NODE-ID is not valid.
 | `test_nmt_resets` (TC-CO-06) | Reset node and reset communication from M1 in each NMT state: `Evt_ResetApp`, `Evt_ResetComm`, boot-up again, the objects restored as the reset table of `ocan_nmt` states (read by SDO), 2000h kept, the data at the PDO port and the local time kept, the active bus kept; start, stop and enter pre-operational | CO-IF-08, CO-AP-13, CO-AP-17 |
 | `test_node_id` (TC-CO-07) | NODE-ID pins with an invalid code: the node silent, no acknowledge on the bus, `Node_IdValid` '0'; a valid code: the node starts; `Ctrl_Enable` '0' and '1' with a change of the bit timing between | CO-IF-03, CO-IF-04 |
 | `test_applicability` (TC-CO-08) | Frames that the node must not answer: remote frames on the identifiers of every PDO, node guarding requests, a block transfer request (answered with an abort), frames of the EMCY and TIME identifiers; no frame of the node other than boot-up, heartbeat, transmit PDOs, the Local Time PDO and SDO replies in the whole test | CO-CN-05, CO-AP-05, CO-AP-09, CO-AP-12, CO-AP-15 |
-| `test_connections` (TC-CO-09) | Every status and event port active at least once: errors of each controller on corrupted frames of M2, the counters, the COB-ID compare and the parameter copies through `ErrInj_Od*`, the NODE-ID copies through `ErrInj_Nmt*`, the dominant timeout through `ErrInj_LinkTxDominant`, the application port with a delay and an abort | CO-IF-08, CO-IF-09, CO-CN-02, CO-AP-02 |
-| TC-CO-10 (`lint/synth_check.py`) | The core synthesised for every combination of `BusAccess_g`, `MinimalSet_g` and `TimePdos_g`, at the bounds of `NumRpdo_g`, `NumTpdo_g`, `FineBits_g` and `ClkFrequency_g`; the generic checks of the blocks refuse inconsistent configurations through the core | CO-CN-04 |
+| `test_connections` (TC-CO-09) | Every status and event port active at least once: errors of each controller on corrupted frames of M2 and a CRC error that only the node sees (its receive input held recessive during one dominant bit by the input `DutRec` of the bus model, so that the model nodes acknowledge), the counters, the COB-ID compare and the parameter copies through `ErrInj_Od*`, the NODE-ID copies through `ErrInj_Nmt*`, the dominant timeout through `ErrInj_LinkTxDominant`, the application port with a delay and an abort | CO-IF-08, CO-IF-09, CO-CN-02, CO-AP-02 |
+| TC-CO-10 (`lint/synth_check.py`) | The core synthesised for every combination of `BusAccess_g`, `MinimalSet_g` and `TimePdos_g`, at the bounds of `NumRpdo_g`, `NumTpdo_g`, `FineBits_g` and `ClkFrequency_g`, and at the bounds of the numeric generics that it passes to the link and to the object dictionary; the generic checks of the blocks refuse inconsistent configurations through the core | CO-CN-04 |
 
 ## 4. Requirement coverage
 
@@ -96,12 +97,17 @@ an 11-bit identifier; no frame of the node while the NODE-ID is not valid.
 | Corrupted frames and a dominant transmit output | TC-CO-09 |
 | Inconsistent generics | TC-CO-10 |
 
-A deliberate fault of every connection of the core (a signal tied to its idle value, two signals exchanged, the wrong
-controller selected for the fault confinement state, the tick or the reset not connected) is simulated with the
-tests that must detect it (verification report, section 4).
+Deliberate faults of the connections of the core (a signal tied to its idle value, two signals exchanged, the wrong
+controller selected for the fault confinement state, the tick or the reset not connected, a status output of a
+block left open) are simulated with the tests that must detect them (verification report, section 4).
 
 ## 6. Not verified at the ports
 
 - The triplicated synchroniser of the reset release and the counter of the tick under an upset (architecture,
   section 6): design review.
+- The time-outs of 256 and 512 ticks: `Err_AppTimeout`, `Err_SdoAccTimeout`, `Err_SdoTxTimeout`, `Err_NmtTxTimeout`,
+  `Err_TpdoTimeout` and `Err_TimeTxTimeout`, and with them the tick at the object dictionary, the SDO server, the PDO
+  block and the time block. Each needs an access or a transmission that stays open for at least 256 ms, which the
+  network bench cannot simulate in a useful time; the benches of the blocks verify the time-outs, and the connection
+  of these ports is checked by review.
 - The functions of the blocks beyond the scenarios of this plan: their own benches.
