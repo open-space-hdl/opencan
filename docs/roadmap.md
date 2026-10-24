@@ -19,7 +19,7 @@ The core is in development and has no technology readiness level yet. The
 | --- | --- | --- |
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done |
-| c | CANopen services and time distribution | In work |
+| c | CANopen services and time distribution | Done |
 | d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | Open |
 
 ## Modules
@@ -27,8 +27,9 @@ The core is in development and has no technology readiness level yet. The
 Every module has a specification, an architecture, a verification plan and a verification report in
 `hdl/<module>/docs/`. The figures come from the verification reports: the GHDL regression of the module, and the
 deliberate faults of the RTL that were each simulated with the tests that must detect them. A fault that changes the
-behaviour only after an upset, which the ports cannot inject, is covered by design review. QuestaSim runs once over
-all modules, with and without code coverage, for the first release.
+behaviour only after an upset, which the ports cannot inject, is covered by design review; a fault of a connection
+of the top level that the ports of the core cannot provoke, by the bench of its block. QuestaSim runs once over all
+modules, with and without code coverage, for the first release.
 
 | Module | Phase | Function | GHDL regression | Deliberate faults |
 | --- | --- | --- | --- | --- |
@@ -41,4 +42,4 @@ all modules, with and without code coverage, for the first release.
 | `ocan_od` | c | Object dictionary of the communication profile and of clause 8, object access port | 36 of 36 runs pass | 52, all detected |
 | `ocan_sdo` | c | SDO server: expedited and segmented transfer, access of the object dictionary | 17 of 17 runs pass | 73, all detected |
 | `ocan_pdo` | c | Receive and transmit PDOs, transmission types, SYNC consumer | 26 of 26 runs pass | 57, all detected |
-| `ocan_core` | c | Top level, generics and ports | Open | Open |
+| `ocan_core` | c | Top level, generics and ports | 36 of 36 runs pass | 39: 38 detected, 1 by the bench of `ocan_dispatch` |
