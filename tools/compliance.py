@@ -148,8 +148,10 @@ def matches(req_clauses, row_clauses):
 
 
 def test_key(tid):
+    # The full ID last: IDs of the same group and number (another zero padding, a suffix) keep one order, whatever the
+    # iteration order of the set they come from, so that the generated file is reproducible
     parts = tid.split("-")
-    return (parts[1], int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0)
+    return (parts[1], int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0, tid)
 
 
 def main():
