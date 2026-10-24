@@ -8,3 +8,4 @@ hdl/ocan_time
 hdl/ocan_od
 hdl/ocan_sdo
 hdl/ocan_pdo
+hdl/ocan_core

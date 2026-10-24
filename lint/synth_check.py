@@ -81,6 +81,32 @@ def configs():
         cfg.append(("ocan_pdo", {"NumRpdo_g": str(n), "NumTpdo_g": str(4 - n)}, None))
     cfg.append(("ocan_pdo", {"NumRpdo_g": "0", "NumTpdo_g": "0"}, None))
     cfg.append(("ocan_pdo", {}, None))
+    # ocan_core (TC-CO-10): every combination of the structure generics of the core, the bounds of the numeric ones,
+    # and the generic checks of the blocks through the core
+    time = {"NumRpdo_g": "3", "NumTpdo_g": "3", "SctCobId_g": "240", "LtpCobId_g": "501"}
+    for access in ("Selective", "Parallel"):
+        for minimal in ("false", "true"):
+            for tpdos in ("false", "true"):
+                gen = {"BusAccess_g": access, "MinimalSet_g": minimal, "TimePdos_g": tpdos}
+                if minimal == "true" and tpdos == "true":
+                    gen.update(time)
+                cfg.append(("ocan_core", gen, None))
+    cfg.append(("ocan_core", {"NumRpdo_g": "0", "NumTpdo_g": "0", "FineBits_g": "0"}, None))
+    cfg.append(("ocan_core", {"ClkFrequency_g": "1000000"}, None))
+    cfg.append(("ocan_core", {"ClkFrequency_g": "2147483647"}, None))
+    # The bounds of the generics that the core passes to the link and to the object dictionary
+    cfg.append(("ocan_core", {"SyncStages_g": "4", "AutoRecover_g": "false", "DominantLimit_g": "1023"}, None))
+    cfg.append(("ocan_core", {"BusAccess_g": "Parallel", "SyncStages_g": "2", "DominantLimit_g": "13"}, None))
+    cfg.append(("ocan_core", {"ProducerHbTime_g": "65535", "MasterNodeId_g": "127", "MasterHbTime_g": "0",
+                              "Bdefault_g": "1", "Ttoggle_g": "255", "Ntoggle_g": "0", "RpdoType_g": "255",
+                              "TpdoType_g": "0", "SctCobId_g": "1279", "LtpCobId_g": "1280"}, None))
+    cfg.append(("ocan_core", {"ProducerHbTime_g": "0", "MasterNodeId_g": "0", "MasterHbTime_g": "65535",
+                              "Ttoggle_g": "0", "Ntoggle_g": "255", "RpdoType_g": "0", "TpdoType_g": "255",
+                              "SctType_g": "0", "LtpType_g": "255"}, None))
+    cfg.append(("ocan_core", {name: "240" for name in types}, None))
+    cfg.append(("ocan_core", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
+    cfg.append(("ocan_core", {"MinimalSet_g": "true", "TimePdos_g": "true", **time, "NumRpdo_g": "4"}, "OD-MS-05"))
+    cfg.append(("ocan_core", {"MinimalSet_g": "true", "TimePdos_g": "true", **time, "SctCobId_g": "0"}, "OD-MS-03"))
     return cfg
 
 

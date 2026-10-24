@@ -9,7 +9,9 @@
 -- One bus of the CAN network model: the wired-AND of the model nodes, of the device under test (through the
 -- transmit enable of its transceiver) and of a fault input. ForceDom holds the bus dominant, ForceRec recessive
 -- (ForceDom wins). With Blind = '1' the receive input of the device under test sees the bus without its own
--- transmit bit, so that its dominant bits do not reach its receiver. '0' is dominant.
+-- transmit bit, so that its dominant bits do not reach its receiver. DutRec holds the receive input of the device
+-- under test recessive and leaves the bus as it is: a disturbance that only the device under test sees, so that
+-- the model nodes acknowledge a frame in which it detects a CRC error. '0' is dominant.
 --
 -- Documentation: docs/conventions.md (section Verification)
 
@@ -38,6 +40,7 @@ entity ocan_tb_can_bus is
         -- Faults
         ForceDom : in    std_logic := '0';
         ForceRec : in    std_logic := '0';
+        DutRec   : in    std_logic := '0';
         Blind    : in    std_logic := '0'
     );
 end entity;
@@ -77,7 +80,8 @@ begin
     end process;
 
     Node_Rx <= transport Level after Delay_g;
-    Dut_Rx  <= transport Nodes after Delay_g when Blind = '1' else
+    Dut_Rx  <= transport '1' after Delay_g when DutRec = '1' else
+               Nodes after Delay_g when Blind = '1' else
                Level after Delay_g;
 
 end architecture;
