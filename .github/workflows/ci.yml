@@ -61,10 +61,16 @@ jobs:
           python run.py --compile-order
           git diff --exit-code compile_order.txt
       - name: ECSS compliance matrix
+        run: python tools/compliance.py --check
+      - name: A stale compliance matrix fails the check
         run: |
-          python tools/compliance.py --check
-          python tools/compliance.py
-          git diff --exit-code docs/compliance.md
+          echo "| stale |" >> docs/compliance.md
+          if out=$(python tools/compliance.py --check); then
+            echo "a stale docs/compliance.md passed python tools/compliance.py --check"
+            exit 1
+          fi
+          echo "$out" | grep "docs/compliance.md is out of date, run without --check"
+          git checkout -- docs/compliance.md
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v24
         with:
