@@ -38,9 +38,9 @@ active bus (a frame that was in transmission at the change may end); every frame
 | --- | --- | --- |
 | `test_startup` (TC-CO-01) | Hardware reset through `Rst` (asynchronous, also released in the middle of a clock period): integration on Bdefault, boot-up message 705h, heartbeats with the producer heartbeat time; in the minimal set Operational by local control without a boot-up message; Bdefault = B: start on bus B | CO-IF-01, CO-IF-02, CO-CN-01, CO-CN-02, CO-AP-01, CO-AP-02, CO-AP-16, CO-AP-17 |
 | `test_configuration` (TC-CO-02) | SDO in Pre-operational: the COB-ID of a transmit PDO invalidated, changed and made valid again, transmission types, 1017h, 1016h, 2000h; the effect of each write on the bus; a write in Operational refused; the application objects 2100h to 2203h through the application port; in the minimal set no SDO answer | CO-IF-06, CO-CN-04, CO-AP-03, CO-AP-07, CO-AP-08, CO-AP-09, CO-AP-19, CO-AP-20 |
-| `test_process_data` (TC-CO-03) | Operational: receive PDOs to the user port, transmit PDOs with the types 254, 1 and 0 on the bus, `Sync_Valid` at every SYNC; no PDO in Pre-operational and in Stopped; `Stat_PdoEnabled` with the NMT state | CO-IF-05, CO-AP-04, CO-AP-06, CO-AP-10, CO-AP-18 |
-| `test_time` (TC-CO-04) | The Spacecraft Time PDO of M1 with a synchronous type after a SYNC: the local time against the SCET of M1 at the SYNC (clause 7.2.3), the Local Time PDO at its SYNCs and on `Time_Req`; Local SCET Set and Get by SDO; on both buses; without the time PDOs no time PDO; in the minimal set without the time PDOs the local time 0 | CO-IF-07, CO-CN-04, CO-AP-11 |
-| `test_bus_monitoring` (TC-CO-05) | The master heartbeat stops on the active bus: Pre-operational after Ttoggle heartbeat times, the PDOs stop, toggling; the master heartbeat on the other bus ends the bus selection, Bdefault updated and read back by SDO; an NMT message on the other bus ends it as well; Ntoggle toggles without success end on the default bus; the error register bit 4 with the state of the controller of the active bus | CO-IF-08, CO-CN-02, CO-CN-03, CO-AP-14 |
+| `test_process_data` (TC-CO-03) | Operational: receive PDOs to the user port, transmit PDOs with the types 254, 1 and 0 on the bus, `Sync_Valid` at every SYNC; no PDO in Pre-operational and in Stopped; `Stat_PdoEnabled` with the NMT state; a hardware reset through `Rst` clears the data at the user port | CO-IF-01, CO-IF-05, CO-AP-04, CO-AP-06, CO-AP-10, CO-AP-18 |
+| `test_time` (TC-CO-04) | The Spacecraft Time PDO of M1 with a synchronous type after a SYNC: the local time against the SCET of M1 at the SYNC (clause 7.2.3), the Local Time PDO at its SYNCs and on `Time_Req`; Local SCET Set and Get by SDO; the Spacecraft Time PDO keeps its type when the type of the Local Time PDO changes; on both buses; without the time PDOs no time PDO; in the minimal set without the time PDOs the local time 0 | CO-IF-07, CO-CN-04, CO-AP-11 |
+| `test_bus_monitoring` (TC-CO-05) | The master heartbeat stops on the active bus: Pre-operational after Ttoggle heartbeat times, the PDOs stop, toggling; the master heartbeat on the other bus ends the bus selection, Bdefault updated and read back by SDO; an NMT message on the other bus ends it as well; Ntoggle toggles without success end on the default bus; the error register bit 4 with the state of the controller of the active bus, with parallel bus access on both buses | CO-IF-08, CO-CN-02, CO-CN-03, CO-AP-14 |
 | `test_nmt_resets` (TC-CO-06) | Reset node and reset communication from M1 in each NMT state: `Evt_ResetApp`, `Evt_ResetComm`, boot-up again, the objects restored as the reset table of `ocan_nmt` states (read by SDO), 2000h kept, the data at the PDO port and the local time kept, the active bus kept; start, stop and enter pre-operational | CO-IF-08, CO-AP-13, CO-AP-17 |
 | `test_node_id` (TC-CO-07) | NODE-ID pins with an invalid code: the node silent, no acknowledge on the bus, `Node_IdValid` '0'; a valid code: the node starts; `Ctrl_Enable` '0' and '1' with a change of the bit timing between | CO-IF-03, CO-IF-04 |
 | `test_applicability` (TC-CO-08) | Frames that the node must not answer: remote frames on the identifiers of every PDO, node guarding requests, a block transfer request (answered with an abort), frames of the EMCY and TIME identifiers; no frame of the node other than boot-up, heartbeat, transmit PDOs, the Local Time PDO and SDO replies in the whole test | CO-CN-05, CO-AP-05, CO-AP-09, CO-AP-12, CO-AP-15 |
@@ -51,7 +51,7 @@ active bus (a frame that was in transmission at the change may end); every frame
 
 | Requirement | Test cases |
 | --- | --- |
-| CO-IF-01 | TC-CO-01 |
+| CO-IF-01 | TC-CO-01, TC-CO-03 |
 | CO-IF-02 | TC-CO-01 |
 | CO-IF-03 | TC-CO-07 |
 | CO-IF-04 | TC-CO-07 |
@@ -110,4 +110,7 @@ block left open) are simulated with the tests that must detect them (verificatio
   block and the time block. Each needs an access or a transmission that stays open for at least 256 ms, which the
   network bench cannot simulate in a useful time; the benches of the blocks verify the time-outs, and the connection
   of these ports is checked by review.
+- The withdrawal of a granted request when the controller of the active bus stops between the grant and the take
+  (`LinkTx_Stopped` of the dispatch): a race of one clock cycle, which the network bench cannot provoke at the
+  ports of the core; TC-DS-18 of `ocan_dispatch` verifies it, and the connection is checked by review.
 - The functions of the blocks beyond the scenarios of this plan: their own benches.

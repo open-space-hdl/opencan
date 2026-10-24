@@ -1358,6 +1358,16 @@ begin
                 else
                     sync;
                 end if;
+                -- A hardware reset through Rst, after a heartbeat on an idle bus: the data at the user port 0 again
+                -- (CO-IF-01)
+                check_value(pdo(Rpdo_Data, 0), mix(0, 2), TB_ERROR, "data of receive PDO 1 before the reset");
+                expectFrame(HbId_c, now, 10 ms, "heartbeat before the reset");
+                wait until rising_edge(Clk);
+                Rst <= '1';
+                wait for 1 us;
+                Rst <= '0';
+                wait for 1 us;
+                check_value(or Rpdo_Data, '0', ERROR, "the data at the user port 0 after the hardware reset");
 
             -- *** TC-CO-04: time ***
             elsif run("test_time") then
@@ -1435,6 +1445,19 @@ begin
                         wait until rising_edge(Clk);
                         Time_Req <= '0';
                         expectFrame(LtpId_c, T_v, 2 ms, "Local Time PDO at Time_Req");
+                        -- The Spacecraft Time PDO keeps its own type 1 (the SCET of the SYNC)
+                        S_v  := x"23456789" & x"400000";
+                        sync;
+                        clocks(3);
+                        T2_v := SyncEvtT;
+                        send(SctId_c, 7, frameOf(S_v));
+                        wait until Evt_TimeSet = '1' for 2 ms;
+                        check_value(Evt_TimeSet, '1', ERROR, "local time set by the Spacecraft Time PDO again");
+                        wait for 1 ms;
+                        wait until rising_edge(Clk);
+                        X_v  := unsigned(std_logic_vector'(Time_Coarse & Time_Fine));
+                        Ok_v := near(X_v, S_v + fineOf(now - T2_v + 50 ns), 6);
+                        check_value(Ok_v, ERROR, "local time: the Spacecraft Time PDO still of type 1");
                     end if;
                 end if;
 
@@ -1442,6 +1465,15 @@ begin
             elsif run("test_bus_monitoring") then
                 startNode;
                 N_v := 1 - Bdefault_g;
+                -- With parallel bus access: bit 4 of the error register with the controller of the start bus, the
+                -- active one (CO-CN-03)
+                if Parallel_c then
+                    Net_v.setErrFlag(2 * B_v + 1, 30, 24, HbId_c);
+                    waitSig(Stat_ErrReg(4), '1', 40 ms, "error register bit 4 with the controller of the start bus");
+                    check_value(Stat_LinkState(2 * B_v + 1 downto 2 * B_v), "01", ERROR,
+                                "the controller of the start bus error passive");
+                    Net_v.setErrFlag(2 * B_v + 1, 30, 0, HbId_c);
+                end if;
                 -- The master heartbeat stops: Pre-operational, the bus selection toggles to the other bus
                 MasterOn <= false;
                 wait until Err_MasterHbMissing = '1' for 40 ms;
