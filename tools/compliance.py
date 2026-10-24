@@ -14,7 +14,8 @@ The owner of a clause is a module of OpenCAN (`ocan_<name>` in backticks), "Out 
 (<reason>)". A clause whose owner module has no testbench yet (hdl/<module>/tb/*_tb.vhd) is listed as planned, with
 the test cases of its verification plan marked as planned. With --check the file is not written; the exit code is 1
 when a clause of a module with a testbench has no test case, when a requirement of a module with a testbench or a
-verification plan has no test case, or when a test case of a module with a testbench is not run by a testbench.
+verification plan has no test case, when a test case of a module with a testbench is not run by a testbench, or
+when docs/compliance.md differs from the generated text (out of date).
 A test case row of the form "TC-<ID> (`lint/synth_check.py`)" is a check of the synthesis script (for example a
 negative elaboration of a generic rule); it counts as run by `lint/synth_check.py`, not by a testbench.
 """
@@ -162,7 +163,8 @@ def main():
         "[architecture](architecture.md) (section 10), the requirements of the module specifications and the test cases",
         "of the module verification plans. `python tools/compliance.py --check` fails when a clause or a requirement",
         "of a module with a testbench has no test case, when a requirement of a module with a verification plan is",
-        "missing from the plan, or when a test case of a module with a testbench is not run by a testbench.",
+        "missing from the plan, when a test case of a module with a testbench is not run by a testbench, or when this",
+        "file is out of date.",
         "",
         "## 1. ECSS clauses",
         "",
@@ -231,16 +233,21 @@ def main():
         f"{len(untested)}; test cases of modules with a testbench not run by a testbench: {len(not_run)}.",
         "",
     ]
+    text = "\n".join(lines)
+    stale = False
     if "--check" not in sys.argv:
-        OUT.write_text("\n".join(lines), encoding="utf-8", newline="\n")
+        OUT.write_text(text, encoding="utf-8", newline="\n")
         print(f"written {OUT.relative_to(ROOT)}")
+    elif not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
+        stale = True
+        print(f"{OUT.relative_to(ROOT).as_posix()} is out of date, run without --check")
     for c in missing:
         print(f"clause not traced: {c}")
     for r in untested:
         print(f"requirement without a test case: {r}")
     for n in not_run:
         print(f"test case not run by a testbench: {n}")
-    sys.exit(1 if (missing or untested or not_run) else 0)
+    sys.exit(1 if (missing or untested or not_run or stale) else 0)
 
 
 if __name__ == "__main__":
