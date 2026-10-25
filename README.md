@@ -1,5 +1,7 @@
 # OpenCAN
 
+[![TRL 3](docs/img/trl-3.svg)](https://openspacehdl.org/trl/)
+
 OpenCAN is an open CAN network core for spacecraft on-board communication that implements ECSS-E-ST-50-15C (CANbus
 extension protocol). It connects a node to a CAN network with a nominal and a redundant bus and provides the
 redundancy management, the time distribution and the CANopen services of the standard. The CAN protocol itself (frames,
@@ -9,13 +11,21 @@ VHDL Library. The core is vendor-independent VHDL-2008; buffers use the fault-to
 
 ## Status
 
-**In development.** The architecture is defined. The data link (`ocan_link`, nominal and redundant bus), the frame
-dispatcher (`ocan_dispatch`), the network management (`ocan_nmt`), the bus redundancy management (`ocan_redundancy`),
-the time distribution (`ocan_time`), the object dictionary (`ocan_od`), the SDO server (`ocan_sdo`) and the PDOs
-(`ocan_pdo`) are implemented and verified with GHDL. The top level `ocan_core` connects them to the slave node of
-the standard and is verified with GHDL on a network testbench in four configurations; the
-[user guide](docs/user_guide.md) describes its integration. QuestaSim and code coverage follow with the first
-release. The [roadmap](docs/roadmap.md) lists the development phases and the state of every module.
+**Technology readiness level: TRL 3** (fully verified by simulation) for phases a to c, the slave node of the
+standard: the data link on the nominal and the redundant bus (`ocan_link`), the frame dispatcher (`ocan_dispatch`),
+the network management (`ocan_nmt`), the bus redundancy management (`ocan_redundancy`), the time distribution
+(`ocan_time`), the object dictionary (`ocan_od`), the SDO server (`ocan_sdo`), the PDOs (`ocan_pdo`) and the top level
+`ocan_core`, each with its specification, architecture, verification plan and verification report. The 356 tests of
+the 16 testbenches pass in GHDL and in QuestaSim, with and without code coverage. They run the node on both buses
+against a CAN network model written from the standards: the start-up on the default bus, the bus monitoring and
+toggling of the redundancy management, the network management, SDO transfers and PDOs, the time distribution at the
+SYNC, corrupted and missing frames, invalid NODE-ID codes and upsets injected through the `ErrInj` ports. Code
+coverage is closed or every remaining miss is justified ([coverage](docs/coverage.md)). The
+[compliance matrix](docs/compliance.md) assigns every clause of the standard to a building block of the architecture
+or marks it out of scope, and traces every clause in scope to its requirements and test cases. The core has not been
+tested on hardware and has no flight heritage; see [what the levels mean](https://openspacehdl.org/trl/) and the
+steps to the next level in the [roadmap](docs/roadmap.md#technology-readiness). The [user guide](docs/user_guide.md)
+describes the integration and the conformance. The AXI4-Lite register wrapper and the hardware test follow in phase d.
 
 ## Documentation
 
