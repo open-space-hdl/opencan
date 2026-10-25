@@ -22,7 +22,7 @@ has no flight heritage. The [TRL page](https://openspacehdl.org/trl/) explains w
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
 | c | Application layer services and time distribution | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
-| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | In progress: `ocan_mib` verified with GHDL; next the top level `ocan_axi` |
+| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | In progress: `ocan_mib` and `ocan_axi` verified with GHDL; QuestaSim with the release, then the hardware test |
 
 ## Modules
 
@@ -46,3 +46,4 @@ modules, with and without code coverage, for release 0.1.0.
 | `ocan_pdo` | c | Receive and transmit PDOs, transmission types, SYNC consumer | 26 of 26 runs pass | 57, all detected |
 | `ocan_core` | c | Top level, generics and ports | 36 of 36 runs pass | 39: 38 detected, 1 by the bench of `ocan_dispatch` |
 | `ocan_mib` | d | Register interface: AXI4-Lite slave, register file, flags and interrupt, PDO data, mailbox of the application objects, local time, error injection | 43 of 43 runs pass | 36, all detected |
+| `ocan_axi` | d | Top level for a processor system: `ocan_core` with `ocan_mib` on AXI4-Lite | 19 of 19 runs pass | 40 connection faults: 38 detected, 2 not detectable at the ports (verification report) |
