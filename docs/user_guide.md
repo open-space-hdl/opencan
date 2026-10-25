@@ -10,7 +10,7 @@ requirements and their verification.
 
 | Library | Sources | Order |
 | --- | --- | --- |
-| `olo` | Open Logic, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.9 (submodule `open-logic`): the areas `base` and `intf` | `open-logic/compile_order.txt` |
+| `olo` | Open Logic, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.11 (submodule `open-logic`): the areas `base` and `intf` | `open-logic/compile_order.txt` |
 | `opencan` | `hdl/<module>/src/*.vhd` of the nine modules | `compile_order.txt` |
 
 The top level is `ocan_core` in the library `opencan`. It uses `olo_intf_can` (the CAN controller),
