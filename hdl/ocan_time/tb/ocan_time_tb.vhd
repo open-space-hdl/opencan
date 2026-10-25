@@ -1084,6 +1084,21 @@ begin
             -- *** TC-TM-14: types 254 and 255 ***
             elsif run("test_tx_on_request") then
 
+                -- High-resolution protocol before the first SYNC: no sample yet, the time of the cycle of the request
+                Cfg_TxType <= u8(254);
+                Cfg_RxType <= u8(1);
+                clocks(2);
+                N_v        := TxCnt;
+                wait until rising_edge(Clk);
+                Req_Valid  <= '1';
+                wait until falling_edge(Clk);
+                T_v        := Stat_Scet;
+                wait until rising_edge(Clk);
+                Req_Valid  <= '0';
+                clocks(10);
+                check_value(TxCnt, N_v + 1, ERROR, "frame at a request before the first SYNC");
+                check_value(scetOf(LogData(N_v)), T_v, ERROR, "the time of the request before the first SYNC");
+
                 for Ty in 254 to 255 loop
                     Cfg_TxType <= u8(Ty);
                     -- Basic protocol: the time of the cycle of the request

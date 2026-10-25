@@ -702,6 +702,28 @@ begin
                 end loop;
 
                 Ids_v := DefIds_c;
+                -- Receive PDO 1 at the bounds of the identifiers between the two free ranges: usable
+                Exp_v      := None_c;
+                Exp_v.Rpdo := '1';
+
+                for K in 0 to 1 loop
+                    if K = 0 then
+                        Ids_v(2) := 16#7DF#;
+                    else
+                        Ids_v(2) := 16#7EF#;
+                    end if;
+                    setCfg(Ids_v);
+                    rx(0, canStd(Ids_v(2), 2), Exp_v, "receive PDO 1 at COB-ID " & integer'image(Ids_v(2)));
+                end loop;
+
+                Ids_v := DefIds_c;
+                -- Valid flag clear of SYNC, the Spacecraft Time PDO and the master heartbeat: no event
+                setCfg(Ids_v, "011111111111");
+                rx(0, canStd(DefIds_c(11), 1, x"0500000000000000"), None_c, "master heartbeat not valid");
+                setCfg(Ids_v, "111111111101");
+                rx(0, canStd(DefIds_c(1), 7, x"0102030405060700"), None_c, "Spacecraft Time PDO not valid");
+                setCfg(Ids_v, "111111111110");
+                rx(0, canStd(DefIds_c(0), 0), None_c, "SYNC not valid");
                 -- Valid flag clear and copies that differ in one bit
                 setCfg(Ids_v, "111111111011");
                 rx(0, canStd(DefIds_c(2), 2), None_c, "receive PDO 1 not valid");
@@ -1001,6 +1023,35 @@ begin
                 check_value(CntAbort(1), 1, ERROR, "aborted frame reported");
                 check_value(CntDone(1), 0, ERROR, "no done");
                 Nmt_EnaPdo <= '1';
+                -- Rejected in one cycle and allowed from the next: the rejected request is not granted (DS-TX-04)
+                waitTx;
+                N_v        := CntAbort(0);
+                Order_v    := DutLog_v.count(2);
+                Nmt_EnaPdo <= '0';
+                clocks(1);
+                request(0);
+                wait until rising_edge(Clk) and SrcValid(0) = '1';
+                Nmt_EnaPdo <= '1';
+                waitTx;
+                check_value(CntAbort(0), N_v + 1, ERROR, "request rejected before the PDO enable: aborted");
+                check_value(DutLog_v.count(2), Order_v, ERROR, "no frame of the request rejected before the enable");
+                -- Withdraw of an SDO reply in Send_s when the NODE-ID becomes invalid with the SDO enable set
+                if SdoServer_g then
+                    RespBlock       <= 50;
+                    N_v             := CntAbort(5);
+                    Order_v         := DutLog_v.count(2);
+                    request(5);
+                    wait until rising_edge(Clk) and LinkTx_Valid = '1';
+                    clocks(5);
+                    Nmt_NodeIdValid <= '0';
+                    clocks(4);
+                    check_value(LinkTx_Valid, '0', ERROR, "SDO reply withdrawn without a valid NODE-ID");
+                    check_value(CntAbort(5), N_v + 1, ERROR, "withdrawn SDO reply aborted");
+                    Nmt_NodeIdValid <= '1';
+                    RespBlock       <= 0;
+                    clocks(60);
+                    check_value(DutLog_v.count(2), Order_v, ERROR, "the withdrawn SDO reply was not taken");
+                end if;
 
             -- *** Free COB-IDs in transmission ***
             elsif run("test_tx_free_range") then

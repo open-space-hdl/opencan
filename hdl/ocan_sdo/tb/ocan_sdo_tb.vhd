@@ -1131,6 +1131,7 @@ begin
     p_control : process is
         variable C0_v   : natural;
         variable C1_v   : natural;
+        variable Off_v  : natural;
         variable N_v    : natural;
         variable R_v    : natural;
         variable B_v    : Bytes_t;
@@ -2073,6 +2074,36 @@ begin
                 check_value(CntAccTmo, C0_v + 1, ERROR, "Err_AccTimeout of the abandoned access");
                 transact(ulInit(x"2000", x"01"), ulExpResp(x"2000", x"01", 1, x"000000A1"),
                          "request after the time-out of the abandoned access");
+                -- A client abort in the cycles around the 512th tick of an access without an answer, the cycle of
+                -- the tick among them; the reference model checks the replies in every cycle. First the offset of
+                -- Err_AccTimeout from a request aligned to a tick
+                settle;
+                wait until rising_edge(Clk) and Tick_Ms = '1';
+                req(dlExp(x"2005", x"00", 0, x"11223344"));
+                C1_v  := Cyc;
+                C0_v  := CntAccTmo;
+                waitCnt(CntAccTmo, C0_v + 1, 512 * 4 + 100, "Err_AccTimeout of the access without an answer");
+                Off_v := CycAccTmo - C1_v;
+                settle;
+
+                for D in -6 to 2 loop
+                    wait until rising_edge(Clk) and Tick_Ms = '1';
+                    req(dlExp(x"2005", x"00", 0, x"11223344"));
+                    C1_v := Cyc;
+                    C0_v := CntAccTmo;
+
+                    while Cyc < C1_v + Off_v + D loop
+                        wait until rising_edge(Clk);
+                    end loop;
+
+                    reqNow(abortReq(x"2005", x"00", x"08000000"));
+                    clocks(20);
+                    check_value(CntAccTmo, C0_v + 1, ERROR, "Err_AccTimeout with the abort at offset " & to_string(D));
+                    settle;
+                end loop;
+
+                transact(ulInit(x"2000", x"01"), ulExpResp(x"2000", x"01", 1, x"000000A1"),
+                         "request after the aborts around the time-out");
 
             -- *** TC-SD-15: hardware reset ***
             elsif run("test_reset") then

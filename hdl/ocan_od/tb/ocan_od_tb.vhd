@@ -1893,6 +1893,7 @@ begin
                 -- SYNC
                 wr32(16#1005#, 0, x"40000080", x"06090030", "SYNC producer");
                 wr32(16#1005#, 0, x"20000080", x"06090030", "SYNC 29 bits");
+                wr32(16#1005#, 0, x"00000880", x"06090030", "SYNC bit 11");
                 wr32(16#1005#, 0, x"00000001", x"06090030", "SYNC restricted");
                 wr32(16#1005#, 0, x"80000090", x"00000000", "SYNC with bit 31");
                 wr32(16#1005#, 0, x"00000080", x"00000000", "SYNC 080h");
@@ -2035,6 +2036,29 @@ begin
                     Nmt_ResetComm <= '0';
                     clocks(3);
                     check_value(to_integer(unsigned(Cfg_HbTime)), ProducerHbTime_g, ERROR, "no effect of the access");
+                end loop;
+
+                -- A reset in the cycle of an access to the user logic: the state abort, no request to the user logic
+                for K in 0 to 1 loop
+                    N_v       := AppCnt;
+                    wait until rising_edge(Clk);
+                    Acc_Valid <= '1';
+                    Acc_Write <= '0';
+                    Acc_Index <= x"2100";
+                    Acc_Sub   <= x"00";
+                    Acc_Data  <= (others => '0');
+                    Acc_Len   <= x"0";
+                    if K = 0 then
+                        Nmt_ResetApp <= '1';
+                    else
+                        Nmt_ResetComm <= '1';
+                    end if;
+                    wait until rising_edge(Clk);
+                    Acc_Valid     <= '0';
+                    Nmt_ResetApp  <= '0';
+                    Nmt_ResetComm <= '0';
+                    clocks(5);
+                    check_value(AppCnt, N_v, ERROR, "no request to the user logic in the cycle of a reset");
                 end loop;
 
                 -- A write in the cycle of an injected disagreement of the same parameter: the write wins
