@@ -4,10 +4,10 @@
 
 OpenCAN is an open CAN network core for spacecraft on-board communication that implements ECSS-E-ST-50-15C (CANbus
 extension protocol). It connects a node to a CAN network with a nominal and a redundant bus and provides the
-redundancy management, the time distribution and the CANopen services of the standard. The CAN protocol itself (frames,
-arbitration, error handling, fault confinement) comes from the CAN 2.0B controller `olo_intf_can` of the Open Logic
-VHDL Library. The core is vendor-independent VHDL-2008; buffers use the fault-tolerant entities of
-[Open Logic](https://github.com/open-logic/open-logic) (SECDED ECC).
+redundancy management, the time distribution and the application layer services (CiA 301) of the standard. The CAN
+protocol itself (frames, arbitration, error handling, fault confinement) comes from the CAN 2.0B controller
+`olo_intf_can` of the Open Logic VHDL Library. The core is vendor-independent VHDL-2008; buffers use the
+fault-tolerant entities of [Open Logic](https://github.com/open-logic/open-logic) (SECDED ECC).
 
 ## Status
 
@@ -78,6 +78,11 @@ python lint/lint.py                 # VSG, no errors and no warnings
 python run.py --compile-order       # compile_order.txt; the CI fails when the file changes
 python -m mkdocs build -f tools/docs/mkdocs.yml  # documentation website, fails on broken links
 ```
+
+## Trademarks
+
+CiA® and CANopen® are registered trademarks of CAN in Automation e.V. OpenCAN implements ECSS-E-ST-50-15C; its
+conformance statement refers to that standard. The core has not been tested or certified by CAN in Automation.
 
 ## Licence
 

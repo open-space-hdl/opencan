@@ -105,11 +105,11 @@ its own unit testbench. `hdl/<module>/README.md` links the four documents and ex
   does not carry exactly the generics of its configuration (VUnit 5.0.0.dev7 shares that list between configurations).
 - A side effect is never obtained by calling an impure function and discarding its result: QuestaSim may remove such
   a call. Protected types offer a procedure for it.
-- The far end of every bus is the CAN network model of `tb/` (own implementation of the CAN frames, of the CANopen
-  services and of the redundancy master or slave nodes of the standard); tests never use the RTL of the core to build
-  or check frames.
+- The far end of every bus is the CAN network model of `tb/` (own implementation of the CAN frames, of the
+  application layer services and of the redundancy master or slave nodes of the standard); tests never use the RTL of
+  the core to build or check frames.
 - Negative tests inject the fault from the bench (a missing heartbeat, a broken or stuck bus, corrupted frames,
-  wrong CANopen requests, double errors through the `ErrInj` ports, ...) and expect the reaction on the buses and in
+  wrong SDO and NMT requests, double errors through the `ErrInj` ports, ...) and expect the reaction on the buses and in
   the status of the core.
 
 ## Git

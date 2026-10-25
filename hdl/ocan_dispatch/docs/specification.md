@@ -102,7 +102,7 @@ them to the link.
 
 | Clause | Interpretation |
 | --- | --- |
-| 5.6.1a | The network may carry frames with 29-bit identifiers (note 2). The CANopen objects of OpenCAN use 11-bit identifiers; the node receives extended frames and ignores them |
+| 5.6.1a | The network may carry frames with 29-bit identifiers (note 2). The communication objects of OpenCAN use 11-bit identifiers; the node receives extended frames and ignores them |
 | 8.3.3g | The NMT message is a frame of the NMT module control service (architecture section 6.5). Its addressing (second byte: the NODE-ID or 0 for all nodes) is checked here, so that `ocan_nmt` and `ocan_redundancy` see the same messages |
 | 9.4.8a | A protocol error of a received frame means that the frame is not processed. The dispatch checks the format of the NMT message; the receiving blocks check the format of their objects (DLC of SYNC, heartbeat, SDO and PDOs) against \[CiA301\] |
 | 9.5a | The free COB-IDs are kept unused at both levels, the clause 6 slave and the minimal set |

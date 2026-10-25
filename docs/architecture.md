@@ -5,10 +5,10 @@
 OpenCAN connects a spacecraft unit to a CAN network as specified by ECSS-E-ST-50-15C, the CANbus extension protocol.
 The network has a nominal and a redundant bus; one node, the Redundancy Master, defines the active bus with its
 heartbeat, and all other nodes follow it. OpenCAN implements the node side of this protocol in hardware: the access
-to the two buses, the bus monitoring and reconfiguration of clause 8, the CANopen services of clause 6 that a node
-needs (network management, heartbeat, process data, configuration access) and the time distribution of clause 7. A
-unit without a processor can join a network of the standard with OpenCAN alone; a unit with a processor uses it to
-offload the time-critical parts of the protocol.
+to the two buses, the bus monitoring and reconfiguration of clause 8, the application layer services of clause 6
+that a node needs (network management, heartbeat, process data, configuration access) and the time distribution of
+clause 7. A unit without a processor can join a network of the standard with OpenCAN alone; a unit with a processor
+uses it to offload the time-critical parts of the protocol.
 
 The CAN protocol itself (frames, bit stuffing, CRC, arbitration, error signalling, fault confinement, bit timing) is
 the CAN 2.0B controller `olo_intf_can` of Open Logic, used once or twice depending on the bus access architecture.
@@ -23,9 +23,9 @@ the standard to a module or marks it out of scope.
   generic.
 - Bus monitoring and reconfiguration of clause 8.3 for a slave node: start-up on the default bus, heartbeat
   consumption of the Redundancy Master, bus toggling and the update of the default bus.
-- CANopen services of clause 6 for a slave node: NMT state machine and module control, boot-up, heartbeat, SYNC
-  consumption, process data objects, an SDO server (expedited and segmented transfer) and the object dictionary
-  entries of the communication profile and of clause 8.
+- Application layer services of clause 6 for a slave node: NMT state machine and module control, boot-up,
+  heartbeat, SYNC consumption, process data objects, an SDO server (expedited and segmented transfer) and the object
+  dictionary entries of the communication profile and of clause 8.
 - Node and COB identifier handling of clause 6.10, including the protection against single point failures.
 - The minimal protocol set of clause 9 as a configuration of the same modules.
 - Spacecraft elapsed time (SCET) with both time distribution protocols of clause 7.2 for a time consumer.
@@ -68,24 +68,26 @@ the arbiter, the strobe generator and the synchronisers.
 | \[CCSDS301\] | CCSDS 301.0-B-4, Time code formats |
 | \[OLO\] | Open Logic VHDL library, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.9 (2b0b02f) |
 
+CiA® and CANopen® are registered trademarks of CAN in Automation e.V.
+
 ### Conventions
 
 Clauses of \[ECSS\] are cited by number and requirement letter (8.3.3e), sections of \[CiA301\] by their number.
-CANopen objects are cited by their object dictionary index in hexadecimal (1017h). The rules of the repository are in
+Objects of the object dictionary are cited by their index in hexadecimal (1017h). The rules of the repository are in
 [conventions](conventions.md).
 
 ## 2 ECSS-E-ST-50-15C functional overview
 
 **Communication model (clause 4.5).** A network has one master and up to 126 slave nodes in a strict master/slave
-relationship. The master is the CANopen NMT master and the Redundancy Master (clause 8.1).
+relationship. The master is the NMT master of \[CiA301\] and the Redundancy Master (clause 8.1).
 
 **Layers.** The physical and data link layers follow ISO 11898 (clause 5) with spacecraft-specific restrictions: the
 bit rates, the bit timing (configurable time quanta, sample point and a resynchronization jump width of 1 to min(4,
 phase segment 1), synchronisation on recessive-to-dominant edges only) and the indication of the error state and the
-error counters to the application (clause 5.6.2). The higher layer is CANopen \[CiA301\] with the applicability of
-clause 11: process data objects, the SYNC object, an optional SDO service, network management with the heartbeat
-protocol (node guarding is not used), the boot-up service and the NMT state machine. The CANopen TIME object is
-replaced by the time distribution of clause 7.
+error counters to the application (clause 5.6.2). The higher layer is the application layer of \[CiA301\] with
+the applicability of clause 11: process data objects, the SYNC object, an optional SDO service, network management
+with the heartbeat protocol (node guarding is not used), the boot-up service and the NMT state machine. The TIME
+object of \[CiA301\] is replaced by the time distribution of clause 7.
 
 **Redundancy (clause 8).** A node accesses the two buses either through one controller and a selector between two
 transceivers (selective bus access, one bus at a time) or through one controller per bus (parallel bus access,
@@ -175,9 +177,9 @@ the active bus](img/ocan_core_overview.drawio.svg)
 | D6 | The core has native ports: PDO data, the object access port for application objects, the protected NODE-ID, the local SCET and status. An AXI4-Lite register interface for configuration and status is a separate wrapper | A unit without a processor uses the native ports directly; the AXI4-Lite wrapper is the interface of the family for a processor system |
 | D7 | Up to four receive and four transmit PDOs by generic, with the COB-IDs of the pre-defined connection set as defaults (clause 9.3). The mapping is static: the eight data bytes of a PDO pass to and from the user logic, and the mapping objects (1600h, 1A00h) are read-only and describe this mapping | Clause 9.4.5 forbids variable and dynamic mapping in the minimal set; clause 9.4.10e allows a read-only object dictionary. One mapping for both levels keeps the PDO path simple |
 | D8 | The NODE-ID comes from pins with a protection code (the identifier and its complement), sampled at reset; the node does not communicate while the code is invalid. COB-IDs default to the pre-defined connection set, change only through SDO in Pre-operational and are held twice with a compare that detects a single upset | No single point failure makes the node use a false NODE-ID or COB-ID (clauses 6.10d, 6.10f, 6.10k) |
-| D9 | The emergency object of clause 6.4 is not implemented; the optional emergency message before a bus switch (clause 8.3.3, note 2) is not sent | The object is optional, clause 11 does not require the EMCY service, and an implementation would have to support all CANopen error codes (clause 6.4b). The conformance section of the user guide lists the clause as not implemented with this reason |
-| D10 | The CANopen protocols (NMT, heartbeat, SDO, PDO, SYNC) are specified from \[CiA301\]; the module specifications cite its sections by number | \[ECSS\] specifies the CANopen layer by reference to \[CiA301\] V4.2.0 and states its applicability in clause 11 |
-| D11 | Received frames are not buffered. `ocan_dispatch` classifies every frame in the cycle after its reception and passes it as an event with a fixed latency; the block that uses an object holds its last frame in a register. Every block that takes frame events takes an event in any clock cycle and ends the processing of a frame within the minimum frame time at 1 Mbit/s (46 bit times, 46 µs), before the next frame can arrive; its specification states this as a requirement and its verification plan tests it with back-to-back frames | A CAN receiver cannot hold back the bus, so every consumer has to take each frame anyway. A buffer would delay the SYNC by a variable time, which the high-resolution time protocol cannot accept (clause 7.2.3k), and would be a memory that needs ECC. CANopen process data have last-value semantics |
+| D9 | The emergency object of clause 6.4 is not implemented; the optional emergency message before a bus switch (clause 8.3.3, note 2) is not sent | The object is optional, clause 11 does not require the EMCY service, and an implementation would have to support all emergency error codes (clause 6.4b). The conformance section of the user guide lists the clause as not implemented with this reason |
+| D10 | The protocols of the application layer (NMT, heartbeat, SDO, PDO, SYNC) are specified from \[CiA301\]; the module specifications cite its sections by number | \[ECSS\] specifies the application layer by reference to \[CiA301\] V4.2.0 and states its applicability in clause 11 |
+| D11 | Received frames are not buffered. `ocan_dispatch` classifies every frame in the cycle after its reception and passes it as an event with a fixed latency; the block that uses an object holds its last frame in a register. Every block that takes frame events takes an event in any clock cycle and ends the processing of a frame within the minimum frame time at 1 Mbit/s (46 bit times, 46 µs), before the next frame can arrive; its specification states this as a requirement and its verification plan tests it with back-to-back frames | A CAN receiver cannot hold back the bus, so every consumer has to take each frame anyway. A buffer would delay the SYNC by a variable time, which the high-resolution time protocol cannot accept (clause 7.2.3k), and would be a memory that needs ECC. Process data of \[CiA301\] have last-value semantics |
 
 ### 6.2 Clock and reset
 
@@ -282,7 +284,7 @@ the code coverage; every test passes in both.
   nodes). It builds and checks frames at bit level independently of the RTL, so that a protocol error of the core is
   seen on the bus.
 - Faults are injected on the buses: a broken or stuck bus, a missing master heartbeat, a master that switches the bus,
-  corrupted frames, wrong CANopen requests, invalid NODE-ID codes, upsets through the `ErrInj` ports.
+  corrupted frames, wrong SDO and NMT requests, invalid NODE-ID codes, upsets through the `ErrInj` ports.
 - Every test observes ports and buses only.
 
 ## 10 Requirement traceability matrix
@@ -330,7 +332,7 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | 8.3.3 | Bus monitoring protocol | `ocan_redundancy` | `ocan_nmt`, `ocan_link` | Core |
 | 9.1 | COB-ID assignment, minimal set | `ocan_nmt` | `ocan_dispatch` | Unit |
 | 9.2 | Object dictionary, minimal set | `ocan_od` | - | Unit |
-| 9.3 | Minimal set CANopen objects | `ocan_pdo` | `ocan_od` | Unit |
+| 9.3 | Minimal set of objects | `ocan_pdo` | `ocan_od` | Unit |
 | 9.4.1 to 9.4.5 | Minimal set protocol, data transmission, PDO mapping | `ocan_pdo` | - | Unit |
 | 9.4.6, 9.4.9 | Minimal set network management, heartbeat, no boot-up | `ocan_nmt` | `ocan_redundancy` | Unit |
 | 9.4.7 | Minimal set special function objects | `ocan_pdo` | `ocan_nmt` | Unit |
@@ -338,7 +340,7 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | 9.4.10 | Minimal set authorized objects | `ocan_od` | - | Unit |
 | 9.5 | Free COB-ID | `ocan_dispatch` | - | Unit |
 | 10.1 to 10.5 | Connectors and pin assignments | Out of scope, board | - | - |
-| 11.1 | CANopen applicability matrix | `ocan_core` | all | Core |
+| 11.1 | Applicability matrix of CiA 301 | `ocan_core` | all | Core |
 
 ## 11 Development plan
 

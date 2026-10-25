@@ -21,7 +21,7 @@ has no flight heritage. The [TRL page](https://openspacehdl.org/trl/) explains w
 | --- | --- | --- |
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
-| c | CANopen services and time distribution | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
+| c | Application layer services and time distribution | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
 | d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | Open |
 
 ## Modules
