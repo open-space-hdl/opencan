@@ -123,6 +123,12 @@ def configs():
         cfg.append(("ocan_mib", {"NumRpdo_g": str(n), "NumTpdo_g": str(n)}, None))
     cfg.append(("ocan_mib", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
     cfg.append(("ocan_mib", {"Tseg2_g": "2", "Sjw_g": "3"}, "Sjw_g must not exceed Tseg2_g"))
+    # ocan_axi: the configurations of the network testbench; the generic checks are those of the instances
+    cfg.append(("ocan_axi", {}, None))
+    cfg.append(("ocan_axi", {"BusAccess_g": "Parallel", "TimePdos_g": "false", "AutoEnable_g": "false"}, None))
+    cfg.append(("ocan_axi", {"MinimalSet_g": "true", "TimePdos_g": "false", "ErrInjRegs_g": "true"}, None))
+    cfg.append(("ocan_axi", {"NumRpdo_g": "0", "NumTpdo_g": "0"}, None))
+    cfg.append(("ocan_axi", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
     return cfg
 
 
