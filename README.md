@@ -25,7 +25,8 @@ coverage is closed or every remaining miss is justified ([coverage](docs/coverag
 or marks it out of scope, and traces every clause in scope to its requirements and test cases. The core has not been
 tested on hardware and has no flight heritage; see [what the levels mean](https://openspacehdl.org/trl/) and the
 steps to the next level in the [roadmap](docs/roadmap.md#technology-readiness). The [user guide](docs/user_guide.md)
-describes the integration and the conformance. The AXI4-Lite register wrapper and the hardware test follow in phase d.
+describes the integration and the conformance. Phase d is in development: the register interface `ocan_mib` and the
+top level `ocan_axi` for a processor system are verified with GHDL; QuestaSim and the hardware test follow.
 
 ## Documentation
 

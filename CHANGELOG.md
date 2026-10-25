@@ -6,6 +6,13 @@ patch version for a fix.
 
 ## [Unreleased]
 
+- **Added:** the register interface `ocan_mib`: an AXI4-Lite slave with the control and the bit timing (written only
+  while disabled and in range), the status of the node and of both controllers, sticky event and error flags with an
+  interrupt, 8-bit error counters, the PDO data, a mailbox for the objects of the user logic, the local time and the
+  error injection (`ErrInjRegs_g`). Register map version 1 (ID 0x4F434101), generated with the C header `sw/ocan_regs.h`
+  by `tools/regmap.py`.
+- **Added:** the top level `ocan_axi` (`ocan_core` with `ocan_mib`) for a processor system; `ocan_core` keeps its
+  ports.
 - **Changed:** Open Logic 4.7.0-ft.11 (from 4.7.0-ft.9). No Open Logic file that OpenCAN uses changes; no port,
   generic or object of OpenCAN changes.
 

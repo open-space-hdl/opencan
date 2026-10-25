@@ -10,3 +10,4 @@ hdl/ocan_sdo/src/ocan_sdo.vhd
 hdl/ocan_pdo/src/ocan_pdo.vhd
 hdl/ocan_core/src/ocan_core.vhd
 hdl/ocan_mib/src/ocan_mib.vhd
+hdl/ocan_axi/src/ocan_axi.vhd
