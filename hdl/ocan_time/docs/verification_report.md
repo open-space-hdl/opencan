@@ -18,7 +18,9 @@ predicted `Time_Coarse`, `Time_Fine`, `Stat_Scet`, `Stat_TimeSet`, the events, `
 specification, the last setting plus floor(n * 2^F / f), and is independent of the accumulator of the architecture.
 The network testbench runs `ocan_time` with `ocan_dispatch` and `ocan_link` on the CAN network model of `tb/`.
 
-QuestaSim: not run yet; it runs with the first release of OpenCAN.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 

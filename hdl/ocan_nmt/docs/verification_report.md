@@ -16,7 +16,9 @@ model predicted `Stat_State`, the service enables, `Node_IdValid`, `Node_Id`, th
 answers like `ocan_dispatch`: one taken frame at a time and no `Tx_Ready` in the cycle of a completion event. The
 network testbench runs `ocan_nmt` with `ocan_dispatch` and `ocan_link` on the CAN network model of `tb/`.
 
-QuestaSim: not run yet; it runs with the first release of OpenCAN.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 

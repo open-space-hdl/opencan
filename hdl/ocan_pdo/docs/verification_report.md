@@ -39,7 +39,9 @@ last frame. In Pre-operational no PDO was passed or sent, and the data held and 
 Operational were discarded, also after the next start. In the minimal set (TC-PD-17) the node was in Operational by
 local control, the reply to a receive PDO and the transmit PDO requested at every `Sync_Valid` were on the bus.
 
-QuestaSim: not run yet; it runs with the first release of OpenCAN.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 

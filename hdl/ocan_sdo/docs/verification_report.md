@@ -26,7 +26,9 @@ In the network bench (TC-SD-17) the model node M1 of the active bus was the SDO 
 bus A and on bus B, with the real `ocan_od`, `ocan_dispatch` and `ocan_link`: every reply had the identifier 585h,
 the DLC 8 and the bytes of \[CiA301\].
 
-QuestaSim: not run yet; it runs with the first release of OpenCAN.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 

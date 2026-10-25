@@ -22,7 +22,9 @@ test TC-RM-14 and in TC-RM-20. The network testbench runs `ocan_redundancy` with
 `ocan_link` on the CAN network model of `tb/`; TC-RM-25 injects one NMT message at the receive input of `ocan_nmt`
 (`Rx_Valid`, `Rx_Cs`) in the network harness, while `ocan_link` reports the switch; the modules stay the real ones.
 
-QuestaSim: not run yet; it runs with the first release of OpenCAN.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 
