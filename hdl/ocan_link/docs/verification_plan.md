@@ -52,16 +52,17 @@ Simulators: GHDL and QuestaSim. Bit timing unless stated: 1 Mbit/s with `Cfg_Pre
 | `test_switch_idle` (TC-LK-06) | After the reset the active bus is the requested bus. A switch without a pending frame: `Stat_Switching` for 2 cycles; the transmit bit and enable of each bus in both architectures; the first frame after the switch on the new bus only after 11 recessive bits | LK-BS-01 to LK-BS-03, LK-BA-03, LK-IF-05, LK-IF-06 |
 | `test_switch_pending` (TC-LK-07) | Switch with a pending frame that has not started (bus busy with M1 frames of higher priority): aborted, never on the new bus. Switch with a frame on the bus: it completes on the old bus as sent, or after an error frame of M2 as aborted. A frame offered during the switch is not taken before the switch has ended and is then sent on the new bus | LK-BS-03, LK-BS-04, LK-TX-02 |
 | `test_switch_request_change` (TC-LK-08) | Requested bus toggled during `Abort_s` and during `Switch_s`: the active bus ends at the latest request | LK-BS-05 |
-| `test_disable` (TC-LK-09) | `Ctrl_Enable` = '0' with a pending frame: the frame is reported as aborted, both buses recessive, no events, no frame taken; enable with the other bus requested: that bus is active | LK-BA-04, LK-BS-01 |
+| `test_disable` (TC-LK-09) | `Ctrl_Enable` = '0' with a pending frame: the frame is reported as aborted, both buses recessive, no events, no frame taken; enable with the other bus requested: that bus is active. A disable in `Abort_s` (a frame on the bus) and in `Switch_s` (the cycle in which the active bus changes): disabled, and the next enable starts on the requested bus | LK-BA-04, LK-BS-01 |
 | `test_arbitration` (TC-LK-10) | The link and M1 start in the same bit: M1 with a lower identifier wins, `Tx_ArbLost`, the link sends after M1; M1 with a higher identifier loses and retransmits after the link. Repeated contention with M1 and M2 queuing frames continuously; every frame of the link arrives once and in order | LK-TX-01, LK-IF-02 |
 | `test_error_frames` (TC-LK-11) | M2 destroys frames of the link with error flags: retransmission, transmit error count +8 per error, error passive at 128, bus off at 256. Bus off keeps the frame pending; after 128 x 11 recessive bits the link recovers and sends it. M2 destroys frames of M1 during the reception of the link: receive error count; all error events per controller | LK-FC-01 to LK-FC-03, LK-TX-03, LK-IF-06 |
 | `test_recover_request` (TC-LK-12) | Configuration `sel_norec`: a bus-off controller stays off until `Ctrl_Recover`, then recovers after 128 x 11 recessive bits | LK-FC-03, LK-IF-05 |
 | `test_counts_kept` (TC-LK-13) | Errors raise the counts on bus A; a switch to bus B and back, and a disable and enable, keep both counts and the state | LK-BS-06 |
-| `test_dominant_timeout` (TC-LK-14) | `ErrInj_TxDominant` on the active controller: after `DominantLimit_g` bit times (+0 to 1 bit time) `Can_Tx` is recessive, `Can_TxEn` '0', `Err_DomTimeout` pulses, `Stat_DomTimeout` is '1' and the pending frame is aborted. `Tx_Ready` is '0' until `Ctrl_Reenable`; a second timeout ends with a disable and enable. In `domlim13` and `domlim1023` the timeout comes at the bound | LK-DT-01, LK-DT-02, LK-IF-05, LK-IF-07 |
-| `test_dominant_inactive` (TC-LK-15) | Parallel: `ErrInj_TxDominant` on the controller of the inactive bus never reaches its bus; its monitor stops it after the limit. A dominant timeout of the active controller, then a bus switch: the stopped controller does not take part until it is re-enabled | LK-DT-01, LK-DT-03, LK-BA-02 |
+| `test_dominant_timeout` (TC-LK-14) | `ErrInj_TxDominant` on the active controller: after `DominantLimit_g` bit times (+0 to 1 bit time) `Can_Tx` is recessive, `Can_TxEn` '0', `Err_DomTimeout` pulses, `Stat_DomTimeout` and `Tx_Stopped` are '1' and the pending frame is aborted. `Tx_Ready` is '0' until `Ctrl_Reenable`, which clears `Tx_Stopped`; a second timeout ends with a disable and enable; with a prescaler of 0 the timeout comes after the same number of bits as with 1. In `domlim13` and `domlim1023` the timeout comes at the bound | LK-DT-01, LK-DT-02, LK-IF-05, LK-IF-07 |
+| `test_dominant_inactive` (TC-LK-15) | Parallel: `ErrInj_TxDominant` on the controller of the inactive bus never reaches its bus; its monitor stops it after the limit. A dominant timeout of the active controller, then a bus switch: the stopped controller does not take part until it is re-enabled. `Tx_Stopped` is '0' while only the controller of the inactive bus is stopped and '1' after the switch to the bus of a stopped controller, '0' again after its re-enable while the other one is still stopped | LK-DT-01, LK-DT-03, LK-BA-02, LK-IF-06 |
 | `test_dominant_margin` (TC-LK-16) | No dominant timeout at the default limit in the longest sequences of the controller: superposed error flags of M1 and the link, and blind mode on the active bus (the controller restarts its active error flags until it is error passive) | LK-DT-04 |
 | `test_back_to_back` (TC-LK-17) | M1 sends frames without data back to back (start in the third bit of the intermission, 46 bit times apart) on bus A and, in parallel, on bus B: every frame is passed, each event one cycle after its controller | LK-RX-01, LK-RX-02 |
 | `test_sync_stages` (TC-LK-18) | Configurations `sync3` and `sync4`: frames in both directions | LK-PR-01 |
+| `test_stop_upset` (TC-LK-19) | Configurations `sel` and `par`. `ErrInj_StopFlip` on a healthy controller (both controllers with parallel bus access): never stopped, no `Err_DomTimeout`, frames sent. On a stopped controller whose transmit bit is recessive again: released in the cycle of the disagreement, not stopped by a second disagreement, frames sent. On a stopped controller whose transmit bit is still dominant: stopped again within one bit time, with `Err_DomTimeout`; a re-enable while still dominant: stopped again at once; after the fault, re-enabled and sending | LK-DT-01, LK-DT-02, LK-IF-07 |
 
 ## 4. Requirement coverage
 
@@ -72,8 +73,8 @@ Simulators: GHDL and QuestaSim. Bit timing unless stated: 1 Mbit/s with `Cfg_Pre
 | LK-IF-03 | TC-LK-01 |
 | LK-IF-04 | TC-LK-04 |
 | LK-IF-05 | TC-LK-06, TC-LK-12, TC-LK-14 |
-| LK-IF-06 | TC-LK-06, TC-LK-11 |
-| LK-IF-07 | TC-LK-14 |
+| LK-IF-06 | TC-LK-06, TC-LK-11, TC-LK-14, TC-LK-15 |
+| LK-IF-07 | TC-LK-14, TC-LK-19 |
 | LK-BA-01 | TC-LK-01 |
 | LK-BA-02 | TC-LK-01, TC-LK-02, TC-LK-15 |
 | LK-BA-03 | TC-LK-06 |
@@ -95,8 +96,8 @@ Simulators: GHDL and QuestaSim. Bit timing unless stated: 1 Mbit/s with `Cfg_Pre
 | LK-TX-03 | TC-LK-11 |
 | LK-FC-01, LK-FC-02 | TC-LK-11 |
 | LK-FC-03 | TC-LK-11, TC-LK-12 |
-| LK-DT-01 | TC-LK-14, TC-LK-15 |
-| LK-DT-02 | TC-LK-14 |
+| LK-DT-01 | TC-LK-14, TC-LK-15, TC-LK-19 |
+| LK-DT-02 | TC-LK-14, TC-LK-19 |
 | LK-DT-03 | TC-LK-15 |
 | LK-DT-04 | TC-LK-16 |
 
@@ -111,3 +112,4 @@ Simulators: GHDL and QuestaSim. Bit timing unless stated: 1 Mbit/s with `Cfg_Pre
 | Error frames of another node, error passive, bus off, recovery | TC-LK-11, TC-LK-12 |
 | Dominant monitor: stuck transmit bit, both bounds of the limit | TC-LK-14 |
 | Dominant monitor: no timeout in legal and fault-reaction sequences | TC-LK-16 |
+| Stop state copies that disagree; a stop after a release or a re-enable while still dominant | TC-LK-19 |

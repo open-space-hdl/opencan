@@ -104,6 +104,7 @@ package body ocan_tb_can_pkg is
         Data : std_logic_vector(63 downto 0) := (others => '0');
         Rtr  : std_logic                     := '0') return CanFrame_t is
         variable F_v : CanFrame_t;
+        variable R_v : CanFrame_t;
     begin
         F_v.Ide              := '0';
         F_v.Id               := (others => '0');
@@ -111,7 +112,8 @@ package body ocan_tb_can_pkg is
         F_v.Rtr              := Rtr;
         F_v.Dlc              := Dlc;
         F_v.Data             := Data;
-        return canNormalize(F_v);
+        R_v                  := canNormalize(F_v);
+        return R_v;
     end function;
 
     function canExt (
@@ -120,13 +122,15 @@ package body ocan_tb_can_pkg is
         Data : std_logic_vector(63 downto 0) := (others => '0');
         Rtr  : std_logic                     := '0') return CanFrame_t is
         variable F_v : CanFrame_t;
+        variable R_v : CanFrame_t;
     begin
         F_v.Ide  := '1';
         F_v.Id   := std_logic_vector(to_unsigned(Id, 29));
         F_v.Rtr  := Rtr;
         F_v.Dlc  := Dlc;
         F_v.Data := Data;
-        return canNormalize(F_v);
+        R_v      := canNormalize(F_v);
+        return R_v;
     end function;
 
     function canDataBytes (F : CanFrame_t) return natural is

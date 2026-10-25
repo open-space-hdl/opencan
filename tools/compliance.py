@@ -14,7 +14,10 @@ The owner of a clause is a module of OpenCAN (`ocan_<name>` in backticks), "Out 
 (<reason>)". A clause whose owner module has no testbench yet (hdl/<module>/tb/*_tb.vhd) is listed as planned, with
 the test cases of its verification plan marked as planned. With --check the file is not written; the exit code is 1
 when a clause of a module with a testbench has no test case, when a requirement of a module with a testbench or a
-verification plan has no test case, or when a test case of a module with a testbench is not run by a testbench.
+verification plan has no test case, when a test case of a module with a testbench is not run by a testbench, or
+when docs/compliance.md differs from the generated text (out of date).
+A test case row of the form "TC-<ID> (`lint/synth_check.py`)" is a check of the synthesis script (for example a
+negative elaboration of a generic rule); it counts as run by `lint/synth_check.py`, not by a testbench.
 """
 
 import re
@@ -24,8 +27,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "compliance.md"
 CLAUSE_RE = re.compile(r"\d+(?:\.\d+)+")
-RANGE_RE = re.compile(r"(\d+(?:\.\d+)+)(?:[a-z]+\d*)?(?:\s+to\s+(\d+(?:\.\d+)+))?")
+RANGE_RE = re.compile(r"(\d+(?:\.\d+)+)(?:([a-z]+)\d*)?(?:\s+to\s+(\d+(?:\.\d+)+))?")
 MODULE_RE = re.compile(r"`(ocan_\w+)`")
+SYNTH_RE = re.compile(r"^(TC-[A-Z]+-\d+) \(`lint/synth_check\.py`\)")
 
 
 def table_rows(text):
@@ -37,11 +41,11 @@ def table_rows(text):
 
 
 def clauses(cell):
-    """Base clause numbers of a clause cell, ranges expanded: '8.3.3e, 6.10f' -> ['8.3.3', '6.10'],
-    '5.1.1 to 5.1.3' -> ['5.1.1', '5.1.2', '5.1.3']."""
+    """Clause numbers of a clause cell with their requirement letter, ranges expanded: '8.3.3e, 6.10' ->
+    ['8.3.3e', '6.10'], '5.1.1 to 5.1.3' -> ['5.1.1', '5.1.2', '5.1.3']."""
     result = []
     for m in RANGE_RE.finditer(cell):
-        first, last = m.group(1), m.group(2)
+        first, letter, last = m.group(1), m.group(2), m.group(3)
         if last:
             fp, lp = first.split("."), last.split(".")
             if len(fp) == len(lp) and fp[:-1] == lp[:-1] and int(fp[-1]) <= int(lp[-1]):
@@ -49,8 +53,14 @@ def clauses(cell):
             else:
                 result += [first, last]
         else:
-            result.append(first)
+            result.append(first + (letter or ""))
     return result
+
+
+def split_letter(clause):
+    """'6.5.2a' -> ('6.5.2', 'a'), '6.5.2' -> ('6.5.2', '')."""
+    base = clause.rstrip("abcdefghijklmnopqrstuvwxyz")
+    return base, clause[len(base):]
 
 
 def expand_ids(cell):
@@ -106,6 +116,9 @@ def load_tests():
                 target.setdefault(tid, set()).update(expand_ids(row[-1]))
                 if target is verified:
                     names.add(row[0].split("`")[1])
+            elif len(row) >= 3 and SYNTH_RE.match(row[0]):
+                # A test case of the synthesis check: run by lint/synth_check.py, not by a testbench
+                target.setdefault(SYNTH_RE.match(row[0]).group(1), set()).update(expand_ids(row[-1]))
     run_names = set()
     for tb in ROOT.glob("hdl/*/tb/*.vhd"):
         run_names.update(re.findall(r'run\("(test_\w+)"\)', tb.read_text(encoding="utf-8")))
@@ -123,16 +136,22 @@ def load_matrix():
 
 
 def matches(req_clauses, row_clauses):
+    """A matrix row without a letter takes the clause and its sub-clauses; a row with a letter ('6.5.2a') takes the
+    requirements of that letter and those that name the clause without a letter."""
     for rc in req_clauses:
+        rb, rl = split_letter(rc)
         for c in row_clauses:
-            if rc == c or rc.startswith(c + "."):
+            cb, cl = split_letter(c)
+            if (rb == cb and rl in (cl, "")) if cl else (rb == cb or rb.startswith(cb + ".")):
                 return True
     return False
 
 
 def test_key(tid):
+    # The full ID last: IDs of the same group and number (another zero padding, a suffix) keep one order, whatever the
+    # iteration order of the set they come from, so that the generated file is reproducible
     parts = tid.split("-")
-    return (parts[1], int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0)
+    return (parts[1], int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0, tid)
 
 
 def main():
@@ -146,7 +165,8 @@ def main():
         "[architecture](architecture.md) (section 10), the requirements of the module specifications and the test cases",
         "of the module verification plans. `python tools/compliance.py --check` fails when a clause or a requirement",
         "of a module with a testbench has no test case, when a requirement of a module with a verification plan is",
-        "missing from the plan, or when a test case of a module with a testbench is not run by a testbench.",
+        "missing from the plan, when a test case of a module with a testbench is not run by a testbench, or when this",
+        "file is out of date.",
         "",
         "## 1. ECSS clauses",
         "",
@@ -215,16 +235,21 @@ def main():
         f"{len(untested)}; test cases of modules with a testbench not run by a testbench: {len(not_run)}.",
         "",
     ]
+    text = "\n".join(lines)
+    stale = False
     if "--check" not in sys.argv:
-        OUT.write_text("\n".join(lines), encoding="utf-8", newline="\n")
+        OUT.write_text(text, encoding="utf-8", newline="\n")
         print(f"written {OUT.relative_to(ROOT)}")
+    elif not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
+        stale = True
+        print(f"{OUT.relative_to(ROOT).as_posix()} is out of date, run without --check")
     for c in missing:
         print(f"clause not traced: {c}")
     for r in untested:
         print(f"requirement without a test case: {r}")
     for n in not_run:
         print(f"test case not run by a testbench: {n}")
-    sys.exit(1 if (missing or untested or not_run) else 0)
+    sys.exit(1 if (missing or untested or not_run or stale) else 0)
 
 
 if __name__ == "__main__":

@@ -41,10 +41,12 @@ extra:
 nav:
   - Home: README.md
   - Guide:
+      - User guide: docs/user_guide.md
       - Architecture: docs/architecture.md
   - Modules: hdl/*/
   - Verification:
       - Compliance matrix: docs/compliance.md
+      - Code coverage: docs/coverage.md
   - Project:
       - Roadmap: docs/roadmap.md
       - Conventions: docs/conventions.md

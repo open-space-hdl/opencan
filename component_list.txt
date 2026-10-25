@@ -1,3 +1,11 @@
 # OpenCAN modules in dependency order (compiled into the library opencan by run.py)
+hdl/ocan_pkg
 hdl/ocan_link
 hdl/ocan_dispatch
+hdl/ocan_nmt
+hdl/ocan_redundancy
+hdl/ocan_time
+hdl/ocan_od
+hdl/ocan_sdo
+hdl/ocan_pdo
+hdl/ocan_core

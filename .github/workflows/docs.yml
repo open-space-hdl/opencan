@@ -1,8 +1,9 @@
 name: Documentation
 
 # Builds the documentation website from the Markdown files of the repository (tools/docs/mkdocs.yml) and publishes it
-# with GitHub Pages at https://openspacehdl.org/opencan/. Pull requests only build it: broken links fail the build.
-# The website is uploaded and deployed only while the repository is public.
+# with GitHub Pages at https://openspacehdl.org/opencan/. Pull requests and pushes to main only build it: broken
+# links fail the build. The website is uploaded and deployed only by a manual run (workflow_dispatch) in the public
+# repository.
 
 on:
   push:
@@ -35,13 +36,13 @@ jobs:
           NO_MKDOCS_2_WARNING: "true"  # notice of Material for MkDocs about MkDocs 2.0; versions are pinned
         run: python -m mkdocs build --strict -f tools/docs/mkdocs.yml
       - name: Upload website
-        if: github.event_name != 'pull_request' && !github.event.repository.private
+        if: github.event_name == 'workflow_dispatch' && !github.event.repository.private
         uses: actions/upload-pages-artifact@v5
         with:
           path: tools/docs/site
 
   deploy:
-    if: github.event_name != 'pull_request' && !github.event.repository.private
+    if: github.event_name == 'workflow_dispatch' && !github.event.repository.private
     needs: build
     runs-on: ubuntu-24.04
     permissions:

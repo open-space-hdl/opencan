@@ -2,17 +2,19 @@
 
 ## 1. Test results
 
-Run with GHDL 6.0.0 (mcode), VUnit 5.0.0.dev7 and UVVM 2026.03.20: `python run.py "*ocan_link_tb*"`.
+Run with GHDL 6.0.0 (mcode), VUnit 5.0.0.dev7 and UVVM 2026.02.14: `python run.py "*ocan_link_tb*"`.
 
 | Testbench | Test cases | Runs (test case and configuration) | Passed |
 | --- | --- | --- | --- |
-| `ocan_link_tb` | 18 | 30 | 30 |
+| `ocan_link_tb` | 19 | 32 | 32 |
 
 The configurations are those of section 2 of the [verification plan](verification_plan.md). The far end of every
 test is the CAN network model of `tb/`, whose encoding and receiver are checked against six frames of real buses
 (`tb/ocan_tb_can_model_tb.vhd`, 8 tests).
 
-QuestaSim: not run yet.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 
@@ -25,6 +27,9 @@ QuestaSim: not run yet.
 | Longest dominant sequence of the controller in blind mode, from a transmit count of 0 | 17 bit times (start of frame and 16 restarted active error flags), no dominant timeout (TC-LK-16) |
 | Bus-off recovery | after 128 x 11 recessive bits, then the pending frame is sent (TC-LK-11, TC-LK-12) |
 | Back-to-back frames | every frame passed; consecutive events exactly the frame length plus 2 bit times apart (TC-LK-17) |
+| Stop state copies made unequal on a stopped controller | released in the cycle after the injection; stopped again in the next cycle, with `Err_DomTimeout`, while the transmit bit is still dominant (TC-LK-19) |
+| Re-enable while the transmit bit is still dominant | stopped again in the next cycle, with `Err_DomTimeout` (TC-LK-19) |
+| `Tx_Stopped` | '1' while the controller of the active bus is stopped, also after a switch to the bus of a stopped controller; '0' while only the controller of the inactive bus is stopped (TC-LK-14, TC-LK-15) |
 
 ## 3. Generic ranges
 
@@ -37,8 +42,8 @@ QuestaSim: not run yet.
 
 ## 4. Negative tests and mutations
 
-Every checker of the plan has a negative test (verification plan, section 5). In addition, twelve deliberate faults
-of the RTL were each simulated with the tests that must detect them, and every one made a test fail:
+Every checker of the plan has a negative test (verification plan, section 5). In addition, 18 deliberate faults of
+the RTL were each simulated with the tests that must detect them, and every one made a test fail:
 
 | Fault | Detected by |
 | --- | --- |
@@ -54,8 +59,20 @@ of the RTL were each simulated with the tests that must detect them, and every o
 | The active bus after the enable ignores the requested bus | TC-LK-06, TC-LK-09 |
 | The dominant monitor counts one quantum too many per bit | TC-LK-14 |
 | A disable does not clear a stopped controller | TC-LK-14 |
+| The dominant timeout only at the step to the limit (=) | TC-LK-19 |
+| Unequal stop state copies stop the controller | TC-LK-19 |
+| The complement of the stop state not used | TC-LK-19 |
+| No repair of unequal stop state copies | TC-LK-19 |
+| `ErrInj_StopFlip` without effect | TC-LK-19 |
+| `Tx_Stopped` of controller 0 instead of the controller of the active bus | TC-LK-15 |
+
+All 18 faults ran on the RTL with the protected stop state. The robustness change moved the text of five faults of the
+first check (no abort while disabled, the monitor never stops, no re-enable, `Tx_Ready` while switching, a stopped
+controller kept at a disable); each was simulated again as the same fault at its new place. The compare with = of the
+dominant monitor is detected at the ports: TC-LK-19 releases a stopped controller whose transmit bit is still dominant,
+which only the compare with >= stops again.
 
 ## 5. Summary
 
-All 18 test cases pass in all 30 runs; every requirement of the specification is covered by the verification plan.
+All 19 test cases pass in all 32 runs; every requirement of the specification is covered by the verification plan.
 VSG reports no errors and no warnings, and the GHDL synthesis of every configuration has no inferred latch.

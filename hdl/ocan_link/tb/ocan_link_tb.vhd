@@ -70,6 +70,7 @@ architecture sim of ocan_link_tb is
     signal Tx_Done           : std_logic;
     signal Tx_Aborted        : std_logic;
     signal Tx_ArbLost        : std_logic;
+    signal Tx_Stopped        : std_logic;
     signal Rx_Valid          : std_logic_vector(1 downto 0);
     signal Stat_ActiveBus    : std_logic;
     signal Stat_Switching    : std_logic;
@@ -85,6 +86,7 @@ architecture sim of ocan_link_tb is
     signal Err_Ack           : std_logic_vector(1 downto 0);
     signal Err_DomTimeout    : std_logic_vector(1 downto 0);
     signal ErrInj_TxDominant : std_logic_vector(1 downto 0)  := "00";
+    signal ErrInj_StopFlip   : std_logic_vector(1 downto 0)  := "00";
     signal Can_Tx            : std_logic_vector(1 downto 0);
     signal Can_TxEn          : std_logic_vector(1 downto 0);
     signal BusLevel          : std_logic_vector(1 downto 0);
@@ -135,6 +137,7 @@ begin
             Tx_Done           => Tx_Done,
             Tx_Aborted        => Tx_Aborted,
             Tx_ArbLost        => Tx_ArbLost,
+            Tx_Stopped        => Tx_Stopped,
             Rx_Valid          => Rx_Valid,
             Stat_ActiveBus    => Stat_ActiveBus,
             Stat_Switching    => Stat_Switching,
@@ -150,6 +153,7 @@ begin
             Err_Ack           => Err_Ack,
             Err_DomTimeout    => Err_DomTimeout,
             ErrInj_TxDominant => ErrInj_TxDominant,
+            ErrInj_StopFlip   => ErrInj_StopFlip,
             Can_Tx            => Can_Tx,
             Can_TxEn          => Can_TxEn,
             BusLevel          => BusLevel,
@@ -446,21 +450,28 @@ begin
         -- Frames of every format: standard and extended, data and remote, DLC 0 to 15
         impure function sample (n : natural; base : natural) return CanFrame_t is
             constant D_c : std_logic_vector(63 downto 0) := x"0123456789ABCDEF";
+            variable R_v : CanFrame_t;
         begin
 
             case n mod 6 is
                 when 0 =>
-                    return canStd(base + n, n mod 9, D_c);
+                    R_v := canStd(base + n, n mod 9, D_c);
+                    return R_v;
                 when 1 =>
-                    return canExt(base * 1024 + n, n mod 9, not D_c);
+                    R_v := canExt(base * 1024 + n, n mod 9, not D_c);
+                    return R_v;
                 when 2 =>
-                    return canStd(base + n, 9 + n mod 7, D_c);
+                    R_v := canStd(base + n, 9 + n mod 7, D_c);
+                    return R_v;
                 when 3 =>
-                    return canStd(base + n, n mod 9, Rtr => '1');
+                    R_v := canStd(base + n, n mod 9, Rtr => '1');
+                    return R_v;
                 when 4 =>
-                    return canExt(base * 1024 + n, 15, D_c, '1');
+                    R_v := canExt(base * 1024 + n, 15, D_c, '1');
+                    return R_v;
                 when others =>
-                    return canExt(base * 1024 + n, 8, x"00FF00FF00FF00FF");
+                    R_v := canExt(base * 1024 + n, 8, x"00FF00FF00FF00FF");
+                    return R_v;
             end case;
 
         end function;
@@ -511,6 +522,8 @@ begin
 
         variable Sent_v : boolean;
         variable Tec_v  : std_logic_vector(17 downto 0);
+        variable E0_v   : TbFrameEntry_t;
+        variable E1_v   : TbFrameEntry_t;
         variable St_v   : std_logic_vector(3 downto 0);
     begin
 
@@ -638,7 +651,10 @@ begin
                 waitNodes;
                 check_value(DutLog_v.count(0), 1, ERROR, "frame on bus A");
                 check_value(DutLog_v.count(1), 1, ERROR, "frame on bus B");
-                check_value(DutLog_v.get(0, 0).T = DutLog_v.get(1, 0).T, ERROR, "events in the same cycle");
+                -- One call of the protected method per variable
+                E0_v := DutLog_v.get(0, 0);
+                E1_v := DutLog_v.get(1, 0);
+                check_value(E0_v.T = E1_v.T, ERROR, "events in the same cycle");
 
             elsif run("test_bit_rates") then
 
@@ -795,6 +811,32 @@ begin
                 clocks(3);
                 check_value(Stat_ActiveBus, '1', ERROR, "active bus after the enable");
                 check_value(seenId(1, canStd(16#7EE#, 0).Id), false, ERROR, "the dropped frame is never sent");
+                -- A disable in Abort_s (a frame on the bus keeps the sequencer there) and in Switch_s (the cycle in
+                -- which the active bus changes): disabled at once, and the next enable starts on the requested bus
+                waitNodes;
+                wait for 20 * Bit_v;
+                send(canStd(16#2A5#, 8, x"A5A5A5A5A5A5A5A5"));
+                wait until Can_Tx(1) = '0';
+                Ctrl_Bus    <= '0';
+                wait until rising_edge(Clk) and Stat_Switching = '1';
+                Ctrl_Enable <= '0';
+                clocks(3);
+                check_value(Stat_Switching, '0', ERROR, "disabled in Abort_s");
+                check_value(Can_TxEn, "00", ERROR, "transmit enables inactive after the disable in Abort_s");
+                waitNodes;
+                Ctrl_Enable <= '1';
+                clocks(3);
+                check_value(Stat_ActiveBus, '0', ERROR, "active bus after the disable in Abort_s");
+                wait for 20 * Bit_v;
+                Ctrl_Bus    <= '1';
+                wait until Stat_ActiveBus = '1';
+                Ctrl_Enable <= '0';
+                clocks(3);
+                check_value(Stat_Switching, '0', ERROR, "disabled in Switch_s");
+                Ctrl_Bus    <= '0';
+                Ctrl_Enable <= '1';
+                clocks(3);
+                check_value(Stat_ActiveBus, '0', ERROR, "active bus after the disable in Switch_s");
 
             elsif run("test_arbitration") then
                 -- The link and node 0 start in the same bit after a frame of node 1
@@ -925,6 +967,7 @@ begin
                 check_value(Can_Tx(0), '1', ERROR, "transmit bit released");
                 check_value(Can_TxEn(0), '0', ERROR, "transmit enable inactive");
                 check_value(Stat_DomTimeout(0), '1', ERROR, "timeout state");
+                check_value(Tx_Stopped, '1', ERROR, "stop state of the controller of the active bus");
                 check_value(CntAborted, N0_v + 1, ERROR, "pending frame aborted");
                 check_value(Tx_Ready, '0', ERROR, "no frame taken while stopped");
                 ErrInj_TxDominant(0) <= '0';
@@ -933,6 +976,7 @@ begin
                 reenable(0);
                 clocks(2);
                 check_value(Stat_DomTimeout(0), '0', ERROR, "re-enabled");
+                check_value(Tx_Stopped, '0', ERROR, "stop state cleared by the re-enable");
                 wait for 15 * Bit_v;
                 sendWait(canStd(16#2BD#, 1, x"BD00000000000000"));
                 -- Second timeout, cleared by a disable and enable
@@ -948,6 +992,23 @@ begin
                 wait for 15 * Bit_v;
                 sendWait(canStd(16#2BE#, 1, x"BE00000000000000"));
                 check_value(CntDomErr(0), 2, ERROR, "two timeout events");
+                -- A prescaler of 0 counts as 1 (as in olo_intf_can): the timeout after DominantLimit_g bits of
+                -- 1 + 15 + 4 clock cycles
+                Ctrl_Enable          <= '0';
+                clocks(2);
+                setTiming(0, 15, 4, 4, 500 ns);
+                clocks(2);
+                Ctrl_Enable          <= '1';
+                wait for 20 * Bit_v;
+                wait until rising_edge(Clk);
+                ErrInj_TxDominant(0) <= '1';
+                T0_v                 := now;
+                wait until rising_edge(Clk) and Err_DomTimeout(0) = '1' for (DominantLimit_g + 2) * Bit_v;
+                T1_v                 := now;
+                ErrInj_TxDominant(0) <= '0';
+                check_value(Err_DomTimeout(0), '1', ERROR, "dominant timeout event with prescaler 0");
+                check_value_in_range(T1_v - T0_v, DominantLimit_g * Bit_v, (DominantLimit_g + 1) * Bit_v, ERROR,
+                                     "time to the timeout with prescaler 0");
 
             elsif run("test_dominant_inactive") then
                 -- Fault injection on the listen-only controller of bus B never reaches bus B
@@ -957,6 +1018,7 @@ begin
                 ErrInj_TxDominant(1) <= '0';
                 clocks(2);
                 check_value(Stat_DomTimeout, "10", ERROR, "controller 1 stopped");
+                check_value(Tx_Stopped, '0', ERROR, "controller of the active bus not stopped");
                 check_value(DomRunMax(1), 0, ERROR, "bus B never driven");
                 -- Timeout of the active controller, then a switch to bus B with the stopped controller 1
                 ErrInj_TxDominant(0) <= '1';
@@ -967,13 +1029,96 @@ begin
                 check_value(Stat_ActiveBus, '1', ERROR, "switch with a stopped controller");
                 clocks(2);
                 check_value(Can_TxEn(1), '0', ERROR, "stopped controller takes no part");
+                check_value(Tx_Stopped, '1', ERROR, "stopped controller of the new active bus");
                 check_value(Tx_Ready, '0', ERROR, "no frame taken");
                 reenable(1);
                 wait for 15 * Bit_v;
                 check_value(Can_TxEn(1), '1', ERROR, "controller 1 re-enabled");
+                check_value(Stat_DomTimeout, "01", ERROR, "controller 0 still stopped");
+                check_value(Tx_Stopped, '0', ERROR, "stop state of the re-enabled controller of the active bus");
                 sendWait(canStd(16#2CC#, 1, x"CC00000000000000"));
                 wait for 15 * Bit_v;
                 check_value(seenId(2, canStd(16#2CC#, 0).Id), true, ERROR, "frame on bus B");
+
+            -- *** TC-LK-19: upsets of the stop state, a stop after a release while still dominant ***
+            elsif run("test_stop_upset") then
+
+                -- A disagreement of the copies of a healthy controller: never stopped (LK-DT-02)
+                for C in 0 to 1 loop
+                    if C = 0 or Parallel_c then
+                        wait until rising_edge(Clk);
+                        ErrInj_StopFlip(C) <= '1';
+                        wait until rising_edge(Clk);
+                        ErrInj_StopFlip(C) <= '0';
+
+                        for I in 1 to 4 loop
+                            wait until falling_edge(Clk);
+                            check_value(Stat_DomTimeout(C), '0', ERROR, "healthy controller " & to_string(C) &
+                                        " not stopped by a disagreement");
+                            check_value(Tx_Stopped, '0', ERROR, "stop state of the active bus");
+                        end loop;
+
+                    end if;
+                end loop;
+
+                check_value(CntDomErr(0) + CntDomErr(1), 0, ERROR, "no timeout event of a disagreement");
+                sendWait(canStd(16#2D1#, 1, x"D100000000000000"));
+                -- A stopped controller whose transmit bit is recessive again: released by a disagreement
+                ErrInj_TxDominant(0) <= '1';
+                wait until rising_edge(Clk) and Err_DomTimeout(0) = '1' for (DominantLimit_g + 2) * Bit_v;
+                ErrInj_TxDominant(0) <= '0';
+                clocks(4);
+                check_value(Stat_DomTimeout(0), '1', ERROR, "stopped by the timeout");
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0)   <= '1';
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0)   <= '0';
+                wait until falling_edge(Clk);
+                check_value(Stat_DomTimeout(0), '0', ERROR, "released in the cycle of the disagreement");
+                check_value(Tx_Stopped, '0', ERROR, "stop state of the active bus after the release");
+                -- A second disagreement after the release: never stopped
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0) <= '1';
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0) <= '0';
+
+                for I in 1 to 4 loop
+                    wait until falling_edge(Clk);
+                    check_value(Stat_DomTimeout(0), '0', ERROR, "not stopped by a second disagreement");
+                end loop;
+
+                wait for 15 * Bit_v;
+                sendWait(canStd(16#2D2#, 1, x"D200000000000000"));
+                check_value(CntDomErr(0), 1, ERROR, "one timeout event so far");
+                -- A stopped controller that is still dominant: stopped again at once after the release, with an event
+                ErrInj_TxDominant(0) <= '1';
+                wait until rising_edge(Clk) and Err_DomTimeout(0) = '1' for (DominantLimit_g + 2) * Bit_v;
+                clocks(4);
+                check_value(CntDomErr(0), 2, ERROR, "second timeout event");
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0)   <= '1';
+                wait until rising_edge(Clk);
+                ErrInj_StopFlip(0)   <= '0';
+                wait until rising_edge(Clk) and Err_DomTimeout(0) = '1' for Bit_v;
+                check_value(Err_DomTimeout(0), '1', ERROR, "stopped again after the release (LK-DT-01)");
+                clocks(2);
+                check_value(Stat_DomTimeout(0), '1', ERROR, "stopped again");
+                check_value(CntDomErr(0), 3, ERROR, "third timeout event");
+                -- A re-enable while still dominant: stopped again at once (LK-DT-01)
+                reenable(0);
+                wait until rising_edge(Clk) and Err_DomTimeout(0) = '1' for Bit_v;
+                check_value(Err_DomTimeout(0), '1', ERROR, "stopped again after the re-enable");
+                clocks(2);
+                check_value(CntDomErr(0), 4, ERROR, "fourth timeout event");
+                -- The fault cleared: re-enabled and sending
+                ErrInj_TxDominant(0) <= '0';
+                clocks(4);
+                reenable(0);
+                clocks(2);
+                check_value(Stat_DomTimeout(0), '0', ERROR, "re-enabled after the fault");
+                wait for 15 * Bit_v;
+                sendWait(canStd(16#2D3#, 1, x"D300000000000000"));
+                check_value(CntDomErr(0), 4, ERROR, "no further timeout event");
 
             elsif run("test_dominant_margin") then
                 -- Blind mode from a transmit count of 0: the dominant bits of the link do not reach its receiver; it

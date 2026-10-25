@@ -28,8 +28,8 @@ them to the link.
 | DS-IF-03 | The dispatch shall take two copies of each configured COB-ID from `ocan_od`: SYNC, the Spacecraft Time PDO, the receive PDOs 1 to `NumRpdo_g`, the transmit PDOs 1 to `NumTpdo_g` and the Local Time PDO. Each copy is an 11-bit identifier with a valid flag. It shall also take two copies of the NODE-ID of the Redundancy Master. | 6.10a, 6.10d |
 | DS-IF-04 | The dispatch shall pass to the protocol blocks, as one-cycle events with their data: the NMT messages to `ocan_nmt`; SYNC with its DLC and data to `ocan_pdo` and `ocan_time`; the receive PDOs with their number, DLC and data to `ocan_pdo`; the Spacecraft Time PDO with its DLC and data to `ocan_time`; the SDO requests with their DLC and data to `ocan_sdo`. | 6.1a, 6.2a, 6.3b, 7.2.2c |
 | DS-IF-05 | The dispatch shall pass to `ocan_redundancy`, per bus, the NMT messages and the master heartbeats (with the state byte) as events. | 8.3.3c, 8.3.3g |
-| DS-IF-06 | The dispatch shall take transmit requests with a valid/ready handshake: NMT error control (one data byte) from `ocan_nmt`, SDO replies (DLC and data) from `ocan_sdo`, the transmit PDOs (number, DLC and data) from `ocan_pdo` and the Local Time PDO (DLC and data) from `ocan_time`. It shall report the completion of each request (sent or aborted) to its requester. | 6.2a, 6.5.2, 7.2.2e |
-| DS-IF-07 | The dispatch shall send frames to `ocan_link` with a valid/ready handshake and take the completion events of the link. It shall provide error events for discarded frames with a protocol error and for COB-ID copies that disagree, with the object concerned. | 6.10d, 9.4.8a |
+| DS-IF-06 | The dispatch shall take transmit requests with a valid/ready handshake: NMT error control (one data byte) from `ocan_nmt`, SDO replies (DLC and data) from `ocan_sdo`, the transmit PDOs (number, DLC and data) from `ocan_pdo` and the Local Time PDO (DLC and data) from `ocan_time`. It shall report the completion of each request (sent or aborted) to its requester. | 6.2a, 6.5.2a, 7.2.2e |
+| DS-IF-07 | The dispatch shall send frames to `ocan_link` with a valid/ready handshake and take the completion events of the link and the stop state of the controller of the active bus. It shall provide error events for discarded frames with a protocol error and for COB-ID copies that disagree, with the object concerned. | 6.10d, 9.4.8a |
 
 ### 2.2 Receive filter (DS-1)
 
@@ -60,11 +60,13 @@ them to the link.
 | ID | Requirement | ECSS |
 | --- | --- | --- |
 | DS-TX-01 | Pending transmit requests shall be served one frame at a time. The sources are ordered by the default identifiers of the pre-defined connection set: transmit PDOs 1 to 4, the Local Time PDO, the SDO reply, NMT error control. After a frame of a source, the next frame shall be that of the first pending source after it in this order, wrapping around to the first source. The next frame is passed to the link after the completion of the previous one. | none |
-| DS-TX-06 | A pending request shall be passed to the link after at most one frame of each other source, also when transmit PDOs are pending all the time. | 6.5.2, 8.3.3d |
+| DS-TX-06 | A pending request shall be passed to the link after at most one frame of each other source, also when transmit PDOs are pending all the time. | 6.5.2a, 8.3.3d |
 | DS-TX-02 | The frames shall be data frames with an 11-bit identifier: 700h + NODE-ID for NMT error control, 580h + NODE-ID for the SDO reply, the COB-ID of transmit PDO n and of the Local Time PDO; the DLC and the data are those of the request. | 6.10a, 9.1b |
-| DS-TX-03 | The completion of a frame (sent, aborted) shall be reported to the requester of that frame. | 6.2a |
+| DS-TX-03 | The completion of a frame (sent, aborted) shall be reported to the requester of that frame. A requester shall not be granted in the clock cycle of its own completion event, so that `Ready` together with `Aborted` is the reject path only and `Ready` never comes together with `Done`. | 6.2a |
 | DS-TX-04 | A request of a service whose enable is not set, or of an object without a valid COB-ID, shall complete as aborted without a frame. When the enable of the service of the pending frame is cleared, the dispatch shall request the abort of that frame from the link. | 8.3.3e |
 | DS-TX-05 | No frame shall be sent with an identifier from 781h to 7DEh or from 7F0h to 7FFh; an object configured with such a COB-ID is not used for transmission or reception. | 9.5a |
+| DS-TX-07 | When the link can take a frame while the dispatch waits for the completion of a frame that the link has taken, and no completion event comes in that clock cycle, that frame shall complete as aborted. | 6.2a |
+| DS-TX-08 | A request shall be granted only while the link can take a frame. A granted frame that the link has not taken shall wait during a bus switch, and shall complete as aborted when the controller of the active bus is stopped by its dominant monitor. | 5.3.6b, 8.3.3e |
 
 ### 2.5 COB-ID protection (DS-4)
 
@@ -84,6 +86,8 @@ them to the link.
 | COB-ID copies disagree | DS-4 | Object unused; event with the object |
 | Request of a disabled service or an invalid COB-ID | DS-3 | Completed as aborted, no frame |
 | Service enable cleared while its frame is pending | DS-3 | Abort requested from the link |
+| Link ready again without the completion of the taken frame | DS-3 | Completed as aborted |
+| Controller of the active bus stopped before the link took the granted frame | DS-3 | Completed as aborted, no frame |
 
 ## 4. Configuration parameters
 
@@ -98,7 +102,7 @@ them to the link.
 
 | Clause | Interpretation |
 | --- | --- |
-| 5.6.1a | The network may carry frames with 29-bit identifiers (note 2). The CANopen objects of OpenCAN use 11-bit identifiers; the node receives extended frames and ignores them |
+| 5.6.1a | The network may carry frames with 29-bit identifiers (note 2). The communication objects of OpenCAN use 11-bit identifiers; the node receives extended frames and ignores them |
 | 8.3.3g | The NMT message is a frame of the NMT module control service (architecture section 6.5). Its addressing (second byte: the NODE-ID or 0 for all nodes) is checked here, so that `ocan_nmt` and `ocan_redundancy` see the same messages |
 | 9.4.8a | A protocol error of a received frame means that the frame is not processed. The dispatch checks the format of the NMT message; the receiving blocks check the format of their objects (DLC of SYNC, heartbeat, SDO and PDOs) against \[CiA301\] |
 | 9.5a | The free COB-IDs are kept unused at both levels, the clause 6 slave and the minimal set |

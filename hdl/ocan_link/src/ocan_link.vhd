@@ -56,6 +56,7 @@ entity ocan_link is
         Tx_Done           : out   std_logic;
         Tx_Aborted        : out   std_logic;
         Tx_ArbLost        : out   std_logic;
+        Tx_Stopped        : out   std_logic;
         -- Received frames, per bus (bus b in slice b)
         Rx_Valid          : out   std_logic_vector(1 downto 0);
         Rx_Id             : out   std_logic_vector(57 downto 0);
@@ -78,8 +79,10 @@ entity ocan_link is
         Err_Form          : out   std_logic_vector(1 downto 0);
         Err_Ack           : out   std_logic_vector(1 downto 0);
         Err_DomTimeout    : out   std_logic_vector(1 downto 0);
-        -- Test input: forces the transmit bit of a controller dominant (tie to "00" in a system)
+        -- Test inputs: force the transmit bit of a controller dominant, invert the complement of its stop state (tie
+        -- both to "00" in a system)
         ErrInj_TxDominant : in    std_logic_vector(1 downto 0)  := "00";
+        ErrInj_StopFlip   : in    std_logic_vector(1 downto 0)  := "00";
         -- Transceivers, per bus (bus A in index 0, bus B in index 1)
         Can_Tx            : out   std_logic_vector(1 downto 0);
         Can_TxEn          : out   std_logic_vector(1 downto 0);
@@ -131,19 +134,20 @@ architecture rtl of ocan_link is
 
     -- *** Two process method ***
     type TwoProcess_r is record
-        State   : State_t;
-        Active  : std_logic;                    -- active bus: '0' bus A, '1' bus B
-        Stopped : std_logic_vector(1 downto 0); -- controller stopped by its dominant monitor
-        TqCnt   : Tq_a;
-        QCnt    : Quanta_a;
-        BitCnt  : Bits_a;
-        DomErr  : std_logic_vector(1 downto 0);
-        RxValid : std_logic_vector(1 downto 0);
-        RxId    : Id_a;
-        RxIde   : std_logic_vector(1 downto 0);
-        RxRtr   : std_logic_vector(1 downto 0);
-        RxDlc   : Dlc_a;
-        RxData  : Data_a;
+        State    : State_t;
+        Active   : std_logic;                    -- active bus: '0' bus A, '1' bus B
+        Stopped  : std_logic_vector(1 downto 0); -- controller stopped by its dominant monitor
+        StoppedN : std_logic_vector(1 downto 0); -- complement of Stopped (LK-DT-02)
+        TqCnt    : Tq_a;
+        QCnt     : Quanta_a;
+        BitCnt   : Bits_a;
+        DomErr   : std_logic_vector(1 downto 0);
+        RxValid  : std_logic_vector(1 downto 0);
+        RxId     : Id_a;
+        RxIde    : std_logic_vector(1 downto 0);
+        RxRtr    : std_logic_vector(1 downto 0);
+        RxDlc    : Dlc_a;
+        RxData   : Data_a;
     end record;
 
     signal r, r_next : TwoProcess_r;
@@ -181,6 +185,8 @@ architecture rtl of ocan_link is
     signal ActCtl : natural range 0 to 1;
     -- Controller takes part in the bus
     signal Live   : std_logic_vector(1 downto 0);
+    -- Controller stopped: the stop state and its complement are complementary and set (LK-DT-02)
+    signal Stop   : std_logic_vector(1 downto 0);
 
 begin
 
@@ -208,7 +214,7 @@ begin
 
         for C in 0 to 1 loop
             TxInt_v(C) := CtlCanTx(C) and not ErrInj_TxDominant(C);
-            if C < NumCtl_c and Run_v and r.Stopped(C) = '0' then
+            if C < NumCtl_c and Run_v and Stop(C) = '0' then
                 Live_v(C) := '1';
             else
                 Live_v(C) := '0';
@@ -264,17 +270,17 @@ begin
         for C in 0 to 1 loop
             CtlTxValid(C) <= '0';
             CtlTxAbort(C) <= '0';
-            if C = ActCtl and r.State = Run_s and r.Stopped(C) = '0' then
+            if C = ActCtl and r.State = Run_s and Stop(C) = '0' then
                 CtlTxValid(C) <= Tx_Valid;
                 CtlTxAbort(C) <= Tx_Abort;
             end if;
             -- Abort before a switch, while disabled and while stopped (LK-BS-02, LK-BA-04, LK-DT-01)
-            if (C = ActCtl and r.State = Abort_s) or r.State = Disabled_s or r.Stopped(C) = '1' then
+            if (C = ActCtl and r.State = Abort_s) or r.State = Disabled_s or Stop(C) = '1' then
                 CtlTxAbort(C) <= '1';
             end if;
         end loop;
 
-        if r.State = Run_s and r.Stopped(ActCtl) = '0' then
+        if r.State = Run_s and Stop(ActCtl) = '0' then
             Tx_Ready <= CtlTxReady(ActCtl);
         else
             Tx_Ready <= '0';
@@ -282,6 +288,8 @@ begin
         Tx_Done    <= CtlTxDone(0) or CtlTxDone(1);
         Tx_Aborted <= CtlTxAborted(0) or CtlTxAborted(1);
         Tx_ArbLost <= CtlTxArbLost(0) or CtlTxArbLost(1);
+        -- Stop state of the controller of the active bus (LK-IF-06)
+        Tx_Stopped <= Stop(ActCtl);
     end process;
 
     -----------------------------------------------------------------------------------------------
@@ -339,6 +347,11 @@ begin
         Quant_v := 1 + resize(unsigned(Cfg_Tseg1), Quant_v'length) + resize(unsigned(Cfg_Tseg2), Quant_v'length);
 
         for C in 0 to NumCtl_c - 1 loop
+            -- Copies that are not complementary release the controller (LK-DT-02)
+            if r.Stopped(C) = r.StoppedN(C) then
+                v.Stopped(C)  := '0';
+                v.StoppedN(C) := '1';
+            end if;
             if TxInt(C) = '1' then
                 v.TqCnt(C)  := (others => '0');
                 v.QCnt(C)   := (others => '0');
@@ -356,14 +369,21 @@ begin
                     v.TqCnt(C) := r.TqCnt(C) + 1;
                 end if;
             end if;
-            -- Timeout: release the bus and stop the controller (LK-DT-01)
-            if v.BitCnt(C) = DominantLimit_g and r.BitCnt(C) /= DominantLimit_g and r.Stopped(C) = '0' then
-                v.Stopped(C) := '1';
-                v.DomErr(C)  := '1';
+            -- Timeout: release the bus and stop the controller (LK-DT-01); also after a release by an upset or a
+            -- re-enable while the transmit bit is still dominant
+            if v.BitCnt(C) >= DominantLimit_g and Stop(C) = '0' then
+                v.Stopped(C)  := '1';
+                v.StoppedN(C) := '0';
+                v.DomErr(C)   := '1';
             end if;
             -- Re-enable (LK-DT-02)
             if Ctrl_Reenable(C) = '1' then
-                v.Stopped(C) := '0';
+                v.Stopped(C)  := '0';
+                v.StoppedN(C) := '1';
+            end if;
+            -- Test input: the complement of the stop state inverted
+            if ErrInj_StopFlip(C) = '1' then
+                v.StoppedN(C) := not v.StoppedN(C);
             end if;
         end loop;
 
@@ -388,8 +408,9 @@ begin
 
         -- *** Disable (LK-BA-04, LK-DT-02) ***
         if Ctrl_Enable = '0' then
-            v.State   := Disabled_s;
-            v.Stopped := "00";
+            v.State    := Disabled_s;
+            v.Stopped  := "00";
+            v.StoppedN := "11";
         end if;
 
         -- *** assign signal ***
@@ -400,7 +421,8 @@ begin
     Rx_Valid        <= r.RxValid;
     Stat_ActiveBus  <= r.Active;
     Stat_Switching  <= '1' when r.State = Abort_s or r.State = Switch_s else '0';
-    Stat_DomTimeout <= r.Stopped;
+    Stat_DomTimeout <= Stop;
+    Stop            <= r.Stopped and not r.StoppedN;
     Err_DomTimeout  <= r.DomErr;
 
     g_out : for B in 0 to 1 generate
@@ -427,14 +449,15 @@ begin
         if rising_edge(Clk) then
             r <= r_next;
             if Rst = '1' then
-                r.State   <= Disabled_s;
-                r.Active  <= '0';
-                r.Stopped <= "00";
-                r.TqCnt   <= (others => (others => '0'));
-                r.QCnt    <= (others => (others => '0'));
-                r.BitCnt  <= (others => (others => '0'));
-                r.DomErr  <= "00";
-                r.RxValid <= "00";
+                r.State    <= Disabled_s;
+                r.Active   <= '0';
+                r.Stopped  <= "00";
+                r.StoppedN <= "11";
+                r.TqCnt    <= (others => (others => '0'));
+                r.QCnt     <= (others => (others => '0'));
+                r.BitCnt   <= (others => (others => '0'));
+                r.DomErr   <= "00";
+                r.RxValid  <= "00";
             end if;
         end if;
     end process;

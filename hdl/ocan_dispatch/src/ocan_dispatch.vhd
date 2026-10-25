@@ -51,6 +51,7 @@ entity ocan_dispatch is
         LinkTx_Abort       : out   std_logic;
         LinkTx_Done        : in    std_logic;
         LinkTx_Aborted     : in    std_logic;
+        LinkTx_Stopped     : in    std_logic                      := '0';
         -- Redundancy and NMT state
         Red_ActiveBus      : in    std_logic;
         Red_Selecting      : in    std_logic;
@@ -257,12 +258,14 @@ begin
         end if;
     end process;
 
-    -- Requester bit 6 - s of source s; the arbiter is served in Idle_s only
+    -- Requester bit 6 - s of source s; the arbiter is served in Idle_s only. No grant to a source in the cycle of its
+    -- own completion event, so that Ready with Aborted is the reject path only and Ready never comes with Done (DS-TX-03)
     g_req : for S in 0 to 6 generate
-        ArbReq(6 - S) <= SrcValid(S) and SrcAllowed(S) and not r.Rej(S);
+        ArbReq(6 - S) <= SrcValid(S) and SrcAllowed(S) and not r.Rej(S) and not r.CplDone(S) and not r.CplAbort(S);
     end generate;
 
-    ArbReady <= '1' when r.TxState = Idle_s else '0';
+    -- A grant only while the link can take a frame (DS-TX-08)
+    ArbReady <= '1' when r.TxState = Idle_s and LinkTx_Ready = '1' else '0';
 
     -----------------------------------------------------------------------------------------------
     -- Combinational process
@@ -455,7 +458,7 @@ begin
         case r.TxState is
 
             when Idle_s =>
-                if ArbValid = '1' then
+                if ArbValid = '1' and ArbReady = '1' then
                     S_v := 0;
 
                     for S in 0 to 6 loop
@@ -492,8 +495,8 @@ begin
             when Send_s =>
                 if LinkTx_Ready = '1' then
                     v.TxState := Wait_s;
-                elsif not OwnerOk_v then
-                    -- The link has not taken the frame: withdrawn
+                elsif not OwnerOk_v or LinkTx_Stopped = '1' then
+                    -- The link has not taken the frame: withdrawn; a bus switch is waited for (DS-TX-08)
                     v.CplAbort(r.Owner) := '1';
                     v.TxState           := Idle_s;
                 end if;
@@ -503,6 +506,10 @@ begin
                     v.CplDone(r.Owner) := '1';
                     v.TxState          := Idle_s;
                 elsif LinkTx_Aborted = '1' then
+                    v.CplAbort(r.Owner) := '1';
+                    v.TxState           := Idle_s;
+                elsif LinkTx_Ready = '1' then
+                    -- The link holds no frame, and its completion has not come: completed as aborted (DS-TX-07)
                     v.CplAbort(r.Owner) := '1';
                     v.TxState           := Idle_s;
                 elsif not OwnerOk_v and r.AbortSent = '0' then
@@ -554,13 +561,13 @@ begin
     Err_CobId          <= r.ErrCobId;
     Stat_CobIdMismatch <= r.Mismatch;
 
-    -- Handshake of the sources: a grant in Idle_s, or the registered rejection
+    -- Handshake of the sources: a grant in Idle_s while the link is ready, or the registered rejection
     p_ready : process (all) is
         variable Rdy_v : std_logic_vector(6 downto 0);
     begin
 
         for S in 0 to 6 loop
-            if (r.TxState = Idle_s and ArbGrant(6 - S) = '1') or r.Rej(S) = '1' then
+            if (ArbReady = '1' and ArbGrant(6 - S) = '1') or r.Rej(S) = '1' then
                 Rdy_v(S) := '1';
             else
                 Rdy_v(S) := '0';

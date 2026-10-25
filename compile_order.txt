@@ -1,2 +1,10 @@
+hdl/ocan_pkg/src/ocan_pkg.vhd
 hdl/ocan_link/src/ocan_link.vhd
 hdl/ocan_dispatch/src/ocan_dispatch.vhd
+hdl/ocan_nmt/src/ocan_nmt.vhd
+hdl/ocan_redundancy/src/ocan_redundancy.vhd
+hdl/ocan_time/src/ocan_time.vhd
+hdl/ocan_od/src/ocan_od.vhd
+hdl/ocan_sdo/src/ocan_sdo.vhd
+hdl/ocan_pdo/src/ocan_pdo.vhd
+hdl/ocan_core/src/ocan_core.vhd
