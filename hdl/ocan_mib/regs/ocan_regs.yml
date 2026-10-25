@@ -1,0 +1,449 @@
+# ---------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 by Julian Schneider
+# Authors: Julian Schneider
+# ---------------------------------------------------------------------------------------------------
+# Register map of the OpenCAN MIB: the single description from which tools/regmap.py generates the
+# VHDL package hdl/ocan_pkg/src/ocan_regs_pkg.vhd, the documentation hdl/ocan_mib/docs/register_map.md
+# and the C header sw/ocan_regs.h.
+#
+# Byte addresses of 32-bit registers on the AXI4-Lite port (9-bit address). Access per field:
+#   RO   read only
+#   RW   read and write
+#   W1   write one: command, reads as zero
+#   W1C  sticky flag, write one to clear
+#   RC   read only, any write to the register clears it (counters)
+# A reset value written as text depends on generics; status fields have none. Counters are 8 bits wide
+# and saturate. Groups: 0x000 identification and control, 0x040 status, 0x080 flags and interrupt,
+# 0x0C0 counters, 0x100 PDOs, 0x180 application objects and time, 0x1C0 error injection.
+
+id: 0x4F434101
+addr_bits: 9
+
+registers:
+  - name: ID
+    offset: 0x000
+    description: Identification of the core and version of the register map
+    fields:
+      - {name: ID, bits: "31:0", access: RO, reset: 0x4F434101, description: "Bits 31:8 the prefix of the core in ASCII (0x4F4341, OCA), as in the other Open Space HDL cores; bits 7:0 the version of the register map (1)"}
+
+  - name: GENERICS
+    offset: 0x004
+    description: Generics of the node
+    fields:
+      - {name: SYNC_STAGES, bits: "26:24", access: RO, reset: SyncStages_g, description: "Synchroniser stages of the bus inputs and of the reset release, 2 to 4"}
+      - {name: FINE_BITS, bits: "20:16", access: RO, reset: FineBits_g, description: "Bits of sub-seconds of the local time, 0 to 24"}
+      - {name: NUM_TPDO, bits: "14:12", access: RO, reset: NumTpdo_g, description: "Transmit PDOs, 0 to 4"}
+      - {name: NUM_RPDO, bits: "10:8", access: RO, reset: NumRpdo_g, description: "Receive PDOs, 0 to 4"}
+      - {name: ERRINJ_REGS, bits: "4", access: RO, reset: ErrInjRegs_g, description: "Error injection registers (ERRINJ_SELECT to ERRINJ_CONTROL)"}
+      - {name: AUTO_RECOVER, bits: "3", access: RO, reset: AutoRecover_g, description: "'1' bus-off recovery after 128 occurrences of 11 recessive bits, '0' on CONTROL.RECOVER"}
+      - {name: TIME_PDOS, bits: "2", access: RO, reset: TimePdos_g, description: "Spacecraft Time PDO and Local Time PDO (clause 7)"}
+      - {name: MINIMAL_SET, bits: "1", access: RO, reset: MinimalSet_g, description: "'1' minimal protocol set of clause 9, '0' slave of clause 6"}
+      - {name: BUS_ACCESS, bits: "0", access: RO, reset: BusAccess_g, description: "Bus access architecture (clause 8.2): '0' selective, '1' parallel"}
+
+  - name: DOMINANT_LIMIT
+    offset: 0x008
+    description: Dominant monitor
+    fields:
+      - {name: LIMIT, bits: "9:0", access: RO, reset: DominantLimit_g, description: "Bit times of a dominant transmit output after which a controller stops, 13 to 1023"}
+
+  - name: CLK_FREQUENCY
+    offset: 0x00C
+    description: Frequency of Clk
+    fields:
+      - {name: HZ, bits: "31:0", access: RO, reset: ClkFrequency_g, description: "Frequency of Clk in Hz (the millisecond tick and the local time)"}
+
+  - name: CONTROL
+    offset: 0x010
+    description: Control of the controllers and of the application port
+    fields:
+      - {name: REENABLE_B, bits: "10", access: W1, reset: 0, description: "Re-enable controller B after a dominant timeout (Ctrl_Reenable(1))"}
+      - {name: REENABLE_A, bits: "9", access: W1, reset: 0, description: "Re-enable controller A after a dominant timeout (Ctrl_Reenable(0))"}
+      - {name: RECOVER, bits: "8", access: W1, reset: 0, description: "Start the bus-off recovery (Ctrl_Recover; with AutoRecover_g = false)"}
+      - {name: APP_ENABLE, bits: "1", access: RW, reset: 0, description: "'1' requests of the application port go to the mailbox (APP_REQ); '0' every request ends with 0602 0000h"}
+      - {name: ENABLE, bits: "0", access: RW, reset: AutoEnable_g, description: "The controllers take part in the buses while '1' and the NODE-ID is valid (Ctrl_Enable)"}
+
+  - name: BIT_TIMING
+    offset: 0x014
+    description: "Bit timing of both controllers (clause 5.4.3); written only while CONTROL.ENABLE = '0' and with values in range, otherwise ERRORS.CFG_REFUSED"
+    fields:
+      - {name: SJW, bits: "30:28", access: RW, reset: Sjw_g, description: "Resynchronisation jump width in time quanta, 1 to min(4, TSEG2)"}
+      - {name: TSEG2, bits: "27:24", access: RW, reset: Tseg2_g, description: "PHASE_SEG2 in time quanta, 2 to 15"}
+      - {name: TSEG1, bits: "20:16", access: RW, reset: Tseg1_g, description: "PROP_SEG + PHASE_SEG1 in time quanta, 2 to 31"}
+      - {name: PRESCALER, bits: "9:0", access: RW, reset: Prescaler_g, description: "Clock cycles per time quantum, 1 to 1023 (0 counts as 1)"}
+
+  - name: NODE
+    offset: 0x040
+    description: Network management and node status
+    fields:
+      - {name: TIME_SET, bits: "26", access: RO, description: "The local time has been set (Stat_TimeSet)"}
+      - {name: SDO_OPEN, bits: "25", access: RO, description: "A segmented SDO transfer is open (Stat_SdoOpen)"}
+      - {name: PDO_ENABLED, bits: "24", access: RO, description: "PDOs are enabled: NMT state Operational (Stat_PdoEnabled)"}
+      - {name: ERR_REG, bits: "23:16", access: RO, description: "Error register 1001h (Stat_ErrReg)"}
+      - {name: NODE_ID_VALID, bits: "15", access: RO, description: "The NODE-ID of the pins is valid (Node_IdValid)"}
+      - {name: NODE_ID, bits: "14:8", access: RO, description: "NODE-ID (Node_Id)"}
+      - {name: NMT_STATE, bits: "1:0", access: RO, description: "NMT state: 0 Initialisation, 1 Pre-operational, 2 Operational, 3 Stopped"}
+
+  - name: REDUNDANCY
+    offset: 0x044
+    description: Bus redundancy management
+    fields:
+      - {name: MASTER_HB_STATE, bits: "23:16", access: RO, description: "State in the last master heartbeat (Stat_MasterHbState)"}
+      - {name: CTOGGLE, bits: "15:8", access: RO, description: "Ctoggle (Stat_Ctoggle)"}
+      - {name: MASTER_HB_PRESENT, bits: "5:4", access: RO, description: "Master heartbeat present, bit 4 bus A, bit 5 bus B (Stat_MasterHbPresent)"}
+      - {name: SWITCHING, bits: "2", access: RO, description: "A bus switch is in progress (Stat_LinkSwitching)"}
+      - {name: SELECTING, bits: "1", access: RO, description: "Bus selection process at start-up (Stat_Selecting)"}
+      - {name: ACTIVE_BUS, bits: "0", access: RO, description: "Active bus: '0' bus A, '1' bus B (Stat_ActiveBus)"}
+
+  - name: LINK_A
+    offset: 0x048
+    description: "Controller A: error counters and fault confinement state (clause 5.6.2b, 5.6.2c)"
+    fields:
+      - {name: DOM_TIMEOUT, bits: "29", access: RO, description: "Stopped by a dominant timeout until CONTROL.REENABLE_A (Stat_LinkDomTimeout(0))"}
+      - {name: BUS_IDLE, bits: "28", access: RO, description: "Bus idle (Stat_LinkBusIdle(0))"}
+      - {name: STATE, bits: "25:24", access: RO, description: "Fault confinement state: 0 error active, 1 error passive, 3 bus off"}
+      - {name: REC, bits: "23:16", access: RO, description: "Receive error counter"}
+      - {name: TEC, bits: "8:0", access: RO, description: "Transmit error counter"}
+
+  - name: LINK_B
+    offset: 0x04c
+    description: "Controller B: error counters and fault confinement state (clause 5.6.2b, 5.6.2c)"
+    fields:
+      - {name: DOM_TIMEOUT, bits: "29", access: RO, description: "Stopped by a dominant timeout until CONTROL.REENABLE_B (Stat_LinkDomTimeout(1))"}
+      - {name: BUS_IDLE, bits: "28", access: RO, description: "Bus idle (Stat_LinkBusIdle(1))"}
+      - {name: STATE, bits: "25:24", access: RO, description: "Fault confinement state: 0 error active, 1 error passive, 3 bus off"}
+      - {name: REC, bits: "23:16", access: RO, description: "Receive error counter"}
+      - {name: TEC, bits: "8:0", access: RO, description: "Transmit error counter"}
+
+  - name: COB_ID_MISMATCH
+    offset: 0x050
+    description: "COB-ID compare of ocan_dispatch (clause 6.10d)"
+    fields:
+      - {name: MISMATCH, bits: "11:0", access: RO, description: "One bit per COB-ID entry whose copies disagree (Stat_CobIdMismatch)"}
+
+  - name: TPDO_STATUS
+    offset: 0x054
+    description: Transmit PDOs
+    fields:
+      - {name: BUSY, bits: "3:0", access: RO, description: "Request of transmit PDO n pending, bit n - 1 (Stat_TpdoBusy)"}
+
+  - name: EVENTS
+    offset: 0x080
+    description: Event flags
+    fields:
+      - {name: APP_REQUEST, bits: "9", access: W1C, reset: 0, description: "A request of the application port is in the mailbox (APP_REQ)"}
+      - {name: LINK_ARB_LOST, bits: "8", access: W1C, reset: 0, description: "Arbitration lost (Evt_LinkArbLost)"}
+      - {name: SDO_ABORT_RX, bits: "7", access: W1C, reset: 0, description: "SDO abort received (Evt_SdoAbortRx)"}
+      - {name: SDO_ABORT_TX, bits: "6", access: W1C, reset: 0, description: "SDO abort sent (Evt_SdoAbortTx)"}
+      - {name: TIME_SYNC, bits: "5", access: W1C, reset: 0, description: "Local time sampled at the SYNC (Evt_TimeSync)"}
+      - {name: TIME_SET, bits: "4", access: W1C, reset: 0, description: "Local time set (Evt_TimeSet)"}
+      - {name: BDEFAULT_UPDATE, bits: "3", access: W1C, reset: 0, description: "Bdefault updated (Evt_BdefaultUpdate)"}
+      - {name: RESET_COMM, bits: "2", access: W1C, reset: 0, description: "Reset communication (Evt_ResetComm)"}
+      - {name: RESET_APP, bits: "1", access: W1C, reset: 0, description: "Reset the application of the device (Evt_ResetApp)"}
+      - {name: SYNC, bits: "0", access: W1C, reset: 0, description: "SYNC received (Sync_Valid)"}
+
+  - name: EVENTS_IRQ_EN
+    offset: 0x084
+    description: Interrupt enables of EVENTS, one per flag in the bit of the flag
+    fields:
+      - {name: ENABLE, bits: "9:0", access: RW, reset: 0, description: "'1' the flag raises the interrupt"}
+
+  - name: PDO_EVENTS
+    offset: 0x088
+    description: "PDO flags, bit n - 1 of a field for PDO n"
+    fields:
+      - {name: TPDO_TIMEOUT, bits: "23:20", access: W1C, reset: 0, description: "Transmit PDO without completion within 256 ticks (Err_TpdoTimeout)"}
+      - {name: TPDO_BUSY, bits: "19:16", access: W1C, reset: 0, description: "Request while the PDO was busy (Err_TpdoBusy)"}
+      - {name: RPDO_LENGTH, bits: "15:12", access: W1C, reset: 0, description: "Receive PDO with fewer than 8 bytes (Err_RpdoLength)"}
+      - {name: TPDO_ABORTED, bits: "11:8", access: W1C, reset: 0, description: "Transmit PDO aborted (Evt_TpdoAborted)"}
+      - {name: TPDO_SENT, bits: "7:4", access: W1C, reset: 0, description: "Transmit PDO sent (Evt_TpdoSent)"}
+      - {name: RPDO_RECEIVED, bits: "3:0", access: W1C, reset: 0, description: "New data of the receive PDO (Rpdo_Valid)"}
+
+  - name: PDO_EVENTS_IRQ_EN
+    offset: 0x08C
+    description: Interrupt enables of PDO_EVENTS, one per flag in the bit of the flag
+    fields:
+      - {name: ENABLE, bits: "23:0", access: RW, reset: 0, description: "'1' the flag raises the interrupt"}
+
+  - name: ERRORS
+    offset: 0x090
+    description: Error flags
+    fields:
+      - {name: CFG_REFUSED, bits: "16", access: W1C, reset: 0, description: "Write to BIT_TIMING while CONTROL.ENABLE = '1' or with a value out of range"}
+      - {name: TIME_TX_TIMEOUT, bits: "15", access: W1C, reset: 0, description: "Local Time PDO without completion (Err_TimeTxTimeout)"}
+      - {name: TIME_RX_DROP, bits: "14", access: W1C, reset: 0, description: "Spacecraft Time PDO dropped (Err_TimeRxDrop)"}
+      - {name: TIME_TX_BUSY, bits: "13", access: W1C, reset: 0, description: "Local Time PDO request while one is pending (Err_TimeTxBusy)"}
+      - {name: SDO_ACC_TIMEOUT, bits: "12", access: W1C, reset: 0, description: "SDO access of the object dictionary without an answer (Err_SdoAccTimeout)"}
+      - {name: SDO_TX_TIMEOUT, bits: "11", access: W1C, reset: 0, description: "SDO reply without completion (Err_SdoTxTimeout)"}
+      - {name: SDO_RX_DROP, bits: "10", access: W1C, reset: 0, description: "SDO request dropped (Err_SdoRxDrop)"}
+      - {name: COB_ID, bits: "9", access: W1C, reset: 0, description: "COB-ID error of ocan_dispatch (Err_CobId)"}
+      - {name: PROTOCOL, bits: "8", access: W1C, reset: 0, description: "Protocol error of a received frame (Err_Protocol)"}
+      - {name: APP_TIMEOUT, bits: "7", access: W1C, reset: 0, description: "Request of the application port without a response within 256 ticks (Err_AppTimeout)"}
+      - {name: PARAM_COPY, bits: "6", access: W1C, reset: 0, description: "Copies of a parameter disagreed and were repaired (Err_ParamCopy)"}
+      - {name: MASTER_HB_DLC, bits: "5", access: W1C, reset: 0, description: "Master heartbeat with a wrong DLC (Err_MasterHbDlc)"}
+      - {name: TOGGLE_END, bits: "4", access: W1C, reset: 0, description: "Bus toggling ended after Ntoggle (Err_ToggleEnd)"}
+      - {name: MASTER_HB_MISSING, bits: "3", access: W1C, reset: 0, description: "Master heartbeat missing (Err_MasterHbMissing)"}
+      - {name: NMT_TX_TIMEOUT, bits: "2", access: W1C, reset: 0, description: "Heartbeat or boot-up without completion (Err_NmtTxTimeout)"}
+      - {name: NODE_ID, bits: "1", access: W1C, reset: 0, description: "Invalid NODE-ID code at the pins (Err_NodeId)"}
+      - {name: NMT_CS, bits: "0", access: W1C, reset: 0, description: "NMT command with an unknown command specifier (Err_NmtCs)"}
+
+  - name: ERRORS_IRQ_EN
+    offset: 0x094
+    description: Interrupt enables of ERRORS, one per flag in the bit of the flag
+    fields:
+      - {name: ENABLE, bits: "16:0", access: RW, reset: 0, description: "'1' the flag raises the interrupt"}
+
+  - name: LINK_ERRORS
+    offset: 0x098
+    description: "Error flags of the controllers, bits 5:0 controller A, bits 13:8 controller B"
+    fields:
+      - {name: B, bits: "13:8", access: W1C, reset: 0, description: "Controller B, as A"}
+      - {name: A, bits: "5:0", access: W1C, reset: 0, description: "Controller A: bit 0 bit error, 1 stuff error, 2 CRC error, 3 form error, 4 acknowledgement error, 5 dominant timeout (Err_Link*(0))"}
+
+  - name: LINK_ERRORS_IRQ_EN
+    offset: 0x09C
+    description: Interrupt enables of LINK_ERRORS, one per flag in the bit of the flag
+    fields:
+      - {name: ENABLE, bits: "13:0", access: RW, reset: 0, description: "'1' the flag raises the interrupt (bits 7:6 have no flag)"}
+
+  - name: IRQ_STATUS
+    offset: 0x0A0
+    description: Flag registers with a set and enabled flag; the interrupt output is the OR of the bits
+    fields:
+      - {name: LINK_ERRORS, bits: "3", access: RO, description: "LINK_ERRORS and LINK_ERRORS_IRQ_EN have a common bit"}
+      - {name: ERRORS, bits: "2", access: RO, description: "ERRORS and ERRORS_IRQ_EN have a common bit"}
+      - {name: PDO_EVENTS, bits: "1", access: RO, description: "PDO_EVENTS and PDO_EVENTS_IRQ_EN have a common bit"}
+      - {name: EVENTS, bits: "0", access: RO, description: "EVENTS and EVENTS_IRQ_EN have a common bit"}
+
+  - name: LINK_A_COUNTS0
+    offset: 0x0c0
+    description: "Error events of controller A (saturating at 255; a write clears the register)"
+    fields:
+      - {name: FORM, bits: "31:24", access: RC, reset: 0, description: "Form errors"}
+      - {name: CRC, bits: "23:16", access: RC, reset: 0, description: "CRC errors"}
+      - {name: STUFF, bits: "15:8", access: RC, reset: 0, description: "Stuff errors"}
+      - {name: BIT, bits: "7:0", access: RC, reset: 0, description: "Bit errors"}
+
+  - name: LINK_A_COUNTS1
+    offset: 0x0c4
+    description: "Error events of controller A (saturating at 255; a write clears the register)"
+    fields:
+      - {name: DOM_TIMEOUT, bits: "15:8", access: RC, reset: 0, description: "Dominant timeouts"}
+      - {name: ACK, bits: "7:0", access: RC, reset: 0, description: "Acknowledgement errors"}
+
+  - name: LINK_B_COUNTS0
+    offset: 0x0c8
+    description: "Error events of controller B (saturating at 255; a write clears the register)"
+    fields:
+      - {name: FORM, bits: "31:24", access: RC, reset: 0, description: "Form errors"}
+      - {name: CRC, bits: "23:16", access: RC, reset: 0, description: "CRC errors"}
+      - {name: STUFF, bits: "15:8", access: RC, reset: 0, description: "Stuff errors"}
+      - {name: BIT, bits: "7:0", access: RC, reset: 0, description: "Bit errors"}
+
+  - name: LINK_B_COUNTS1
+    offset: 0x0cc
+    description: "Error events of controller B (saturating at 255; a write clears the register)"
+    fields:
+      - {name: DOM_TIMEOUT, bits: "15:8", access: RC, reset: 0, description: "Dominant timeouts"}
+      - {name: ACK, bits: "7:0", access: RC, reset: 0, description: "Acknowledgement errors"}
+
+  - name: RPDO1_HI
+    offset: 0x100
+    description: "Receive PDO 1, data bytes 0 to 3 (Rpdo_Data(63 downto 32)); a read takes RPDO1_LO for the next read of it; zero above NumRpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: RPDO1_LO
+    offset: 0x104
+    description: "Receive PDO 1, data bytes 4 to 7, as taken by the last read of RPDO1_HI"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: RPDO2_HI
+    offset: 0x108
+    description: "Receive PDO 2, data bytes 0 to 3 (Rpdo_Data(127 downto 96)); a read takes RPDO2_LO for the next read of it; zero above NumRpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: RPDO2_LO
+    offset: 0x10c
+    description: "Receive PDO 2, data bytes 4 to 7, as taken by the last read of RPDO2_HI"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: RPDO3_HI
+    offset: 0x110
+    description: "Receive PDO 3, data bytes 0 to 3 (Rpdo_Data(191 downto 160)); a read takes RPDO3_LO for the next read of it; zero above NumRpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: RPDO3_LO
+    offset: 0x114
+    description: "Receive PDO 3, data bytes 4 to 7, as taken by the last read of RPDO3_HI"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: RPDO4_HI
+    offset: 0x118
+    description: "Receive PDO 4, data bytes 0 to 3 (Rpdo_Data(255 downto 224)); a read takes RPDO4_LO for the next read of it; zero above NumRpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: RPDO4_LO
+    offset: 0x11c
+    description: "Receive PDO 4, data bytes 4 to 7, as taken by the last read of RPDO4_HI"
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: TPDO1_HI
+    offset: 0x120
+    description: "Transmit PDO 1, next data bytes 0 to 3; to Tpdo_Data(63 downto 32) at TPDO_CONTROL.UPDATE or REQUEST; zero above NumTpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: TPDO1_LO
+    offset: 0x124
+    description: "Transmit PDO 1, next data bytes 4 to 7"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: TPDO2_HI
+    offset: 0x128
+    description: "Transmit PDO 2, next data bytes 0 to 3; to Tpdo_Data(127 downto 96) at TPDO_CONTROL.UPDATE or REQUEST; zero above NumTpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: TPDO2_LO
+    offset: 0x12c
+    description: "Transmit PDO 2, next data bytes 4 to 7"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: TPDO3_HI
+    offset: 0x130
+    description: "Transmit PDO 3, next data bytes 0 to 3; to Tpdo_Data(191 downto 160) at TPDO_CONTROL.UPDATE or REQUEST; zero above NumTpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: TPDO3_LO
+    offset: 0x134
+    description: "Transmit PDO 3, next data bytes 4 to 7"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: TPDO4_HI
+    offset: 0x138
+    description: "Transmit PDO 4, next data bytes 0 to 3; to Tpdo_Data(255 downto 224) at TPDO_CONTROL.UPDATE or REQUEST; zero above NumTpdo_g"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 0 in bits 31:24, byte 3 in bits 7:0"}
+
+  - name: TPDO4_LO
+    offset: 0x13c
+    description: "Transmit PDO 4, next data bytes 4 to 7"
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Byte 4 in bits 31:24, byte 7 in bits 7:0"}
+
+  - name: TPDO_CONTROL
+    offset: 0x140
+    description: "Transmit PDOs, bit n - 1 of a field for PDO n"
+    fields:
+      - {name: REQUEST, bits: "11:8", access: W1, reset: 0, description: "Copy TPDOn_HI and TPDOn_LO to the data of the PDO and request it (Tpdo_Req) in the same clock cycle"}
+      - {name: UPDATE, bits: "3:0", access: W1, reset: 0, description: "Copy TPDOn_HI and TPDOn_LO to the data of the PDO, for the PDOs of the synchronous types"}
+
+  - name: APP_REQ
+    offset: 0x180
+    description: "Request of the application port in the mailbox (CONTROL.APP_ENABLE = '1')"
+    fields:
+      - {name: PENDING, bits: "31", access: RO, reset: 0, description: "A request waits for its response (APP_RSP_CONTROL.SEND)"}
+      - {name: WRITE, bits: "28", access: RO, reset: 0, description: "'1' write, '0' read"}
+      - {name: LEN, bits: "27:24", access: RO, reset: 0, description: "Number of data bytes of a write, 0 to 8"}
+      - {name: SUB, bits: "23:16", access: RO, reset: 0, description: "Sub-index"}
+      - {name: INDEX, bits: "15:0", access: RO, reset: 0, description: "Index, 2003h to 9FFFh"}
+
+  - name: APP_REQ_HI
+    offset: 0x184
+    description: Data of a write request, bits 63:32 of App_ReqData
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Bits 63:32 of App_ReqData"}
+
+  - name: APP_REQ_LO
+    offset: 0x188
+    description: Data of a write request, bits 31:0 of App_ReqData
+    fields:
+      - {name: DATA, bits: "31:0", access: RO, reset: 0, description: "Bits 31:0 of App_ReqData"}
+
+  - name: APP_RSP_HI
+    offset: 0x18C
+    description: Data of the response, bits 63:32 of App_RspData
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Bits 63:32 of App_RspData"}
+
+  - name: APP_RSP_LO
+    offset: 0x190
+    description: Data of the response, bits 31:0 of App_RspData
+    fields:
+      - {name: DATA, bits: "31:0", access: RW, reset: 0, description: "Bits 31:0 of App_RspData"}
+
+  - name: APP_RSP_LEN
+    offset: 0x194
+    description: Number of data bytes of the response
+    fields:
+      - {name: LEN, bits: "3:0", access: RW, reset: 0, description: "Number of data bytes of a read response, 0 to 8 (App_RspLen)"}
+
+  - name: APP_RSP_ABORT
+    offset: 0x198
+    description: Abort code of the response
+    fields:
+      - {name: CODE, bits: "31:0", access: RW, reset: 0, description: "0 for success, otherwise the SDO abort code (App_RspAbort)"}
+
+  - name: APP_RSP_CONTROL
+    offset: 0x19C
+    description: Completion of the request in the mailbox
+    fields:
+      - {name: SEND, bits: "0", access: W1, reset: 0, description: "Send the response of APP_RSP_HI to APP_RSP_ABORT (App_RspValid); no effect without a pending request"}
+
+  - name: TIME_COARSE
+    offset: 0x1A0
+    description: "Local SCET, seconds (Time_Coarse); a read takes TIME_FINE for the next read of it"
+    fields:
+      - {name: SECONDS, bits: "31:0", access: RO, description: "Seconds"}
+
+  - name: TIME_FINE
+    offset: 0x1A4
+    description: "Local SCET, sub-seconds as taken by the last read of TIME_COARSE"
+    fields:
+      - {name: FRACTION, bits: "23:0", access: RO, reset: 0, description: "Sub-seconds in units of 2^-24 s; the bits below 24 - FineBits_g are zero (Time_Fine)"}
+
+  - name: TIME_CONTROL
+    offset: 0x1A8
+    description: Local Time PDO
+    fields:
+      - {name: REQUEST, bits: "0", access: W1, reset: 0, description: "Request of the Local Time PDO, transmission types 0, 254 and 255 (Time_Req)"}
+
+  - name: ERRINJ_SELECT
+    offset: 0x1C0
+    description: "Target and window of the error injection (ErrInjRegs_g = true; zero otherwise)"
+    fields:
+      - {name: WINDOW1, bits: "20:16", access: RW, reset: 0, description: "Window w1 of ERRINJ_MASK1: bits 32 w1 to 32 w1 + 31 of the target"}
+      - {name: TARGET, bits: "8", access: RW, reset: 0, description: "'0' the protected parameters of ocan_od (558 bits, windows 0 to 17), '1' the protected state of ocan_nmt (14 bits, window 0)"}
+      - {name: WINDOW0, bits: "4:0", access: RW, reset: 0, description: "Window w0 of ERRINJ_MASK0: bits 32 w0 to 32 w0 + 31 of ErrInj_OdBitFlip or ErrInj_NmtBitFlip"}
+
+  - name: ERRINJ_MASK0
+    offset: 0x1C4
+    description: "Bits to invert in window w0 (ErrInjRegs_g = true; zero otherwise)"
+    fields:
+      - {name: MASK, bits: "31:0", access: RW, reset: 0, description: "Bit i inverts bit 32 w0 + i of the target; bits beyond the width of the target are ignored"}
+
+  - name: ERRINJ_MASK1
+    offset: 0x1C8
+    description: "Bits to invert in window w1, in the same clock cycle (ErrInjRegs_g = true; zero otherwise)"
+    fields:
+      - {name: MASK, bits: "31:0", access: RW, reset: 0, description: "Bit i inverts bit 32 w1 + i of the target; with w1 = w0 the OR with ERRINJ_MASK0"}
+
+  - name: ERRINJ_CONTROL
+    offset: 0x1CC
+    description: "Error injection commands (ErrInjRegs_g = true; zero otherwise)"
+    fields:
+      - {name: LINK_TX_DOMINANT, bits: "9:8", access: RW, reset: 0, description: "Force the transmit bit of controller A (bit 8) or B (bit 9) dominant (ErrInj_LinkTxDominant)"}
+      - {name: LINK_STOP_FLIP_B, bits: "5", access: W1, reset: 0, description: "Invert the complement of the stop state of controller B for one clock cycle (ErrInj_LinkStopFlip(1))"}
+      - {name: LINK_STOP_FLIP_A, bits: "4", access: W1, reset: 0, description: "Invert the complement of the stop state of controller A for one clock cycle (ErrInj_LinkStopFlip(0))"}
+      - {name: INJECT, bits: "0", access: W1, reset: 0, description: "Invert the bits of ERRINJ_MASK0 and ERRINJ_MASK1 in their windows in one clock cycle (ErrInj_OdValid or ErrInj_NmtValid)"}
