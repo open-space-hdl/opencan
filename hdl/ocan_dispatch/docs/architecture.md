@@ -114,7 +114,7 @@ The frames are data frames with an 11-bit identifier; `ocan_core` ties `Tx_Ide` 
 DS-TX-07 relies on this property of `ocan_link` and `olo_intf_can`: from the cycle after the link has taken a frame
 until the cycle of its completion event, `LinkTx_Ready` is '0'. A `LinkTx_Ready` = '1' in `Wait_s` without
 `LinkTx_Done` or `LinkTx_Aborted` therefore means that the link holds no frame of the dispatch, and the frame is
-completed as aborted. The line numbers refer to `olo_intf_can` of Open Logic `4.7.0-ft.9` and to `ocan_link` of this
+completed as aborted. The line numbers refer to `olo_intf_can` of Open Logic `4.7.0-ft.11` and to `ocan_link` of this
 repository.
 
 - **olo_intf_can.** `TxPending` is set only at the take (line 327: `Tx_Valid` = '1' and `TxPending` = '0'). Every

@@ -36,7 +36,8 @@ Closure rules:
 
 Run on 2026-10-25 with Open Logic 4.7.0-ft.9: 356 tests of the 17 testbenches, all passed, 77 minutes in one
 simulator process; without code coverage the same 356 tests pass (72 minutes). Numbers are covered/total bins
-per file; bold marks a metric with misses.
+per file; bold marks a metric with misses. The results apply to Open Logic 4.7.0-ft.11 as well: from 4.7.0-ft.9 to
+4.7.0-ft.11 no Open Logic file that OpenCAN uses changes, and the HDL of OpenCAN is the same.
 
 | File | Statements | Branches | FSM states | FSM transitions | Conditions | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
