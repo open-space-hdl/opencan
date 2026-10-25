@@ -811,6 +811,32 @@ begin
                 clocks(3);
                 check_value(Stat_ActiveBus, '1', ERROR, "active bus after the enable");
                 check_value(seenId(1, canStd(16#7EE#, 0).Id), false, ERROR, "the dropped frame is never sent");
+                -- A disable in Abort_s (a frame on the bus keeps the sequencer there) and in Switch_s (the cycle in
+                -- which the active bus changes): disabled at once, and the next enable starts on the requested bus
+                waitNodes;
+                wait for 20 * Bit_v;
+                send(canStd(16#2A5#, 8, x"A5A5A5A5A5A5A5A5"));
+                wait until Can_Tx(1) = '0';
+                Ctrl_Bus    <= '0';
+                wait until rising_edge(Clk) and Stat_Switching = '1';
+                Ctrl_Enable <= '0';
+                clocks(3);
+                check_value(Stat_Switching, '0', ERROR, "disabled in Abort_s");
+                check_value(Can_TxEn, "00", ERROR, "transmit enables inactive after the disable in Abort_s");
+                waitNodes;
+                Ctrl_Enable <= '1';
+                clocks(3);
+                check_value(Stat_ActiveBus, '0', ERROR, "active bus after the disable in Abort_s");
+                wait for 20 * Bit_v;
+                Ctrl_Bus    <= '1';
+                wait until Stat_ActiveBus = '1';
+                Ctrl_Enable <= '0';
+                clocks(3);
+                check_value(Stat_Switching, '0', ERROR, "disabled in Switch_s");
+                Ctrl_Bus    <= '0';
+                Ctrl_Enable <= '1';
+                clocks(3);
+                check_value(Stat_ActiveBus, '0', ERROR, "active bus after the disable in Switch_s");
 
             elsif run("test_arbitration") then
                 -- The link and node 0 start in the same bit after a frame of node 1
@@ -966,6 +992,23 @@ begin
                 wait for 15 * Bit_v;
                 sendWait(canStd(16#2BE#, 1, x"BE00000000000000"));
                 check_value(CntDomErr(0), 2, ERROR, "two timeout events");
+                -- A prescaler of 0 counts as 1 (as in olo_intf_can): the timeout after DominantLimit_g bits of
+                -- 1 + 15 + 4 clock cycles
+                Ctrl_Enable          <= '0';
+                clocks(2);
+                setTiming(0, 15, 4, 4, 500 ns);
+                clocks(2);
+                Ctrl_Enable          <= '1';
+                wait for 20 * Bit_v;
+                wait until rising_edge(Clk);
+                ErrInj_TxDominant(0) <= '1';
+                T0_v                 := now;
+                wait until rising_edge(Clk) and Err_DomTimeout(0) = '1' for (DominantLimit_g + 2) * Bit_v;
+                T1_v                 := now;
+                ErrInj_TxDominant(0) <= '0';
+                check_value(Err_DomTimeout(0), '1', ERROR, "dominant timeout event with prescaler 0");
+                check_value_in_range(T1_v - T0_v, DominantLimit_g * Bit_v, (DominantLimit_g + 1) * Bit_v, ERROR,
+                                     "time to the timeout with prescaler 0");
 
             elsif run("test_dominant_inactive") then
                 -- Fault injection on the listen-only controller of bus B never reaches bus B
