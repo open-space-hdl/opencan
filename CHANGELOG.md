@@ -4,6 +4,11 @@ The notable changes of OpenCAN. The versions follow semantic versioning: 0.y.z w
 version for an incompatible change of ports, generics or the object dictionary, a minor version for a feature and a
 patch version for a fix.
 
+## [Unreleased]
+
+- **Changed:** Open Logic 4.7.0-ft.11 (from 4.7.0-ft.9). No Open Logic file that OpenCAN uses changes; no port,
+  generic or object of OpenCAN changes.
+
 ## [0.1.0] - 2026-10-25
 
 First release: the slave node of ECSS-E-ST-50-15C on a nominal and a redundant CAN bus, with the data link
