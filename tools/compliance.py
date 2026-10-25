@@ -17,7 +17,8 @@ when a clause of a module with a testbench has no test case, when a requirement 
 verification plan has no test case, when a test case of a module with a testbench is not run by a testbench, or
 when docs/compliance.md differs from the generated text (out of date).
 A test case row of the form "TC-<ID> (`lint/synth_check.py`)" is a check of the synthesis script (for example a
-negative elaboration of a generic rule); it counts as run by `lint/synth_check.py`, not by a testbench.
+negative elaboration of a generic rule); it counts as run by `lint/synth_check.py`, not by a testbench. A row of the
+form "TC-<ID> (`tools/regmap.py --check`)" is the check of the generated register map outputs in the CI.
 """
 
 import re
@@ -29,7 +30,7 @@ OUT = ROOT / "docs" / "compliance.md"
 CLAUSE_RE = re.compile(r"\d+(?:\.\d+)+")
 RANGE_RE = re.compile(r"(\d+(?:\.\d+)+)(?:([a-z]+)\d*)?(?:\s+to\s+(\d+(?:\.\d+)+))?")
 MODULE_RE = re.compile(r"`(ocan_\w+)`")
-SYNTH_RE = re.compile(r"^(TC-[A-Z]+-\d+) \(`lint/synth_check\.py`\)")
+SYNTH_RE = re.compile(r"^(TC-[A-Z]+-\d+) \(`(?:lint/synth_check\.py|tools/regmap\.py --check)`\)")
 
 
 def table_rows(text):
@@ -117,7 +118,7 @@ def load_tests():
                 if target is verified:
                     names.add(row[0].split("`")[1])
             elif len(row) >= 3 and SYNTH_RE.match(row[0]):
-                # A test case of the synthesis check: run by lint/synth_check.py, not by a testbench
+                # A test case of the synthesis or register map check: run by its script, not by a testbench
                 target.setdefault(SYNTH_RE.match(row[0]).group(1), set()).update(expand_ids(row[-1]))
     run_names = set()
     for tb in ROOT.glob("hdl/*/tb/*.vhd"):
