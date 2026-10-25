@@ -1207,13 +1207,17 @@ begin
 
         end procedure;
 
-        -- A word whose bits depend on the address, so that no two registers carry the same test data
+        -- A word whose bits depend on the address, so that no two registers carry the same test data. The result
+        -- is returned through a local variable: QuestaSim can give two calls of one function in one procedure call
+        -- the same value when a function returns the result of another function directly
         function pattern (addr : natural; k : natural) return Word_t is
             variable W_v : unsigned(31 downto 0);
+            variable R_v : Word_t;
         begin
             W_v := to_unsigned((addr * 40503 + k * 9973 + 12345) mod 65536, 16) &
                    to_unsigned((addr * 9973 + k * 40503 + 54321) mod 65536, 16);
-            return std_logic_vector(W_v) xor x"A5C3_3C5A";
+            R_v := std_logic_vector(W_v) xor x"A5C3_3C5A";
+            return R_v;
         end function;
 
         -- Expected value of a read-only constant or zero word, as the register map defines it
