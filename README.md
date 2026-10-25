@@ -16,7 +16,7 @@ standard: the data link on the nominal and the redundant bus (`ocan_link`), the 
 the network management (`ocan_nmt`), the bus redundancy management (`ocan_redundancy`), the time distribution
 (`ocan_time`), the object dictionary (`ocan_od`), the SDO server (`ocan_sdo`), the PDOs (`ocan_pdo`) and the top level
 `ocan_core`, each with its specification, architecture, verification plan and verification report. The 356 tests of
-the 16 testbenches pass in GHDL and in QuestaSim, with and without code coverage. They run the node on both buses
+the 17 testbenches pass in GHDL and in QuestaSim, with and without code coverage. They run the node on both buses
 against a CAN network model written from the standards: the start-up on the default bus, the bus monitoring and
 toggling of the redundancy management, the network management, SDO transfers and PDOs, the time distribution at the
 SYNC, corrupted and missing frames, invalid NODE-ID codes and upsets injected through the `ErrInj` ports. Code

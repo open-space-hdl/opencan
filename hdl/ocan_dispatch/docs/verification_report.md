@@ -16,7 +16,9 @@ is stopped, and '0' from the cycle after the take to the cycle of the completion
 test that every completion event of a source belongs to a taken request of that source. The network testbench runs
 `ocan_dispatch` with `ocan_link` on the CAN network model of `tb/`.
 
-QuestaSim: not run yet.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 
