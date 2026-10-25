@@ -450,21 +450,28 @@ begin
         -- Frames of every format: standard and extended, data and remote, DLC 0 to 15
         impure function sample (n : natural; base : natural) return CanFrame_t is
             constant D_c : std_logic_vector(63 downto 0) := x"0123456789ABCDEF";
+            variable R_v : CanFrame_t;
         begin
 
             case n mod 6 is
                 when 0 =>
-                    return canStd(base + n, n mod 9, D_c);
+                    R_v := canStd(base + n, n mod 9, D_c);
+                    return R_v;
                 when 1 =>
-                    return canExt(base * 1024 + n, n mod 9, not D_c);
+                    R_v := canExt(base * 1024 + n, n mod 9, not D_c);
+                    return R_v;
                 when 2 =>
-                    return canStd(base + n, 9 + n mod 7, D_c);
+                    R_v := canStd(base + n, 9 + n mod 7, D_c);
+                    return R_v;
                 when 3 =>
-                    return canStd(base + n, n mod 9, Rtr => '1');
+                    R_v := canStd(base + n, n mod 9, Rtr => '1');
+                    return R_v;
                 when 4 =>
-                    return canExt(base * 1024 + n, 15, D_c, '1');
+                    R_v := canExt(base * 1024 + n, 15, D_c, '1');
+                    return R_v;
                 when others =>
-                    return canExt(base * 1024 + n, 8, x"00FF00FF00FF00FF");
+                    R_v := canExt(base * 1024 + n, 8, x"00FF00FF00FF00FF");
+                    return R_v;
             end case;
 
         end function;

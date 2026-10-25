@@ -552,10 +552,12 @@ begin
 
         function nmt (cs : natural; node : natural; dlc : natural := 2) return CanFrame_t is
             variable D_v : std_logic_vector(63 downto 0) := (others => '0');
+            variable R_v : CanFrame_t;
         begin
             D_v(63 downto 56) := std_logic_vector(to_unsigned(cs, 8));
             D_v(55 downto 48) := std_logic_vector(to_unsigned(node, 8));
-            return canStd(0, dlc, D_v);
+            R_v               := canStd(0, dlc, D_v);
+            return R_v;
         end function;
 
         procedure request (s : natural) is

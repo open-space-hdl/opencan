@@ -59,6 +59,7 @@ architecture sim of ocan_time_tb is
         variable Hi_v : natural;
         variable Lo_v : natural;
         variable U_v  : unsigned(63 downto 0);
+        variable R_v  : Time_t;
     begin
         assert n < 2 ** 28
             report "advance: n out of the exact range"
@@ -67,7 +68,8 @@ architecture sim of ocan_time_tb is
         Hi_v := natural(floor(Q_v / 2.0 ** 30));
         Lo_v := natural(Q_v - real(Hi_v) * 2.0 ** 30);
         U_v  := to_unsigned(Hi_v, 34) & to_unsigned(Lo_v, 30);
-        return resize(U_v, TimeW_c);
+        R_v  := resize(U_v, TimeW_c);
+        return R_v;
     end function;
 
     -- Local time of cycle c after a base value that the local time had in cycle bc (TM-CT-02)
@@ -109,8 +111,10 @@ architecture sim of ocan_time_tb is
     end function;
 
     function u8 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(7 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 8));
+        R_v := std_logic_vector(to_unsigned(n, 8));
+        return R_v;
     end function;
 
     -- *** DUT signals ***
@@ -668,9 +672,11 @@ begin
 
         -- A random 56-bit SCET
         impure function rndScet return std_logic_vector is
+            variable R_v : std_logic_vector(55 downto 0);
         begin
-            return std_logic_vector(to_unsigned(random(0, 2 ** 28 - 1), 28)) &
+            R_v := std_logic_vector(to_unsigned(random(0, 2 ** 28 - 1), 28)) &
                    std_logic_vector(to_unsigned(random(0, 2 ** 28 - 1), 28));
+            return R_v;
         end function;
 
         -- Cycles for k fine time units: ceil(k * f / 2^F)

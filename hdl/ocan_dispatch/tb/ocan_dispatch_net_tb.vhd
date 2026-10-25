@@ -264,8 +264,10 @@ begin
         end procedure;
 
         function nmtFrame return CanFrame_t is
+            variable R_v : CanFrame_t;
         begin
-            return canStd(0, 2, x"0105000000000000");
+            R_v := canStd(0, 2, x"0105000000000000");
+            return R_v;
         end function;
 
         variable Cfg_v  : TbNodeCfg_t;

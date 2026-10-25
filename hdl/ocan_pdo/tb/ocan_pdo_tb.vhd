@@ -66,13 +66,17 @@ architecture sim of ocan_pdo_tb is
     constant Zero64_c : Data_t := (others => '0');
 
     function u4 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(3 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 4));
+        R_v := std_logic_vector(to_unsigned(n, 4));
+        return R_v;
     end function;
 
     function u8 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(7 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 8));
+        R_v := std_logic_vector(to_unsigned(n, 8));
+        return R_v;
     end function;
 
     -- The 64 bits of PDO n (0 to 3) in a vector of the ports

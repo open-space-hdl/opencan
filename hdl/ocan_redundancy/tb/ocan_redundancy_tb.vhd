@@ -45,13 +45,17 @@ end entity;
 architecture sim of ocan_redundancy_tb is
 
     function u16 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(15 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 16));
+        R_v := std_logic_vector(to_unsigned(n, 16));
+        return R_v;
     end function;
 
     function u8 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(7 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 8));
+        R_v := std_logic_vector(to_unsigned(n, 8));
+        return R_v;
     end function;
 
     -- *** DUT signals ***

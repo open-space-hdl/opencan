@@ -47,8 +47,10 @@ architecture sim of ocan_nmt_tb is
     constant NodeId_c : natural := 5;
 
     function slv7 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(6 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 7));
+        R_v := std_logic_vector(to_unsigned(n, 7));
+        return R_v;
     end function;
 
     -- *** DUT signals ***
