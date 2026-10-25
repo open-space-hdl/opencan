@@ -56,7 +56,9 @@ bus, and no frame of the node appeared while its NODE-ID was not valid.
   error that only the node detected came from a disturbance of its receive input alone (the input `DutRec` of the bus
   model); with parallel bus access also the controller of the inactive bus reported it.
 
-QuestaSim: not run yet; it runs with the first release of OpenCAN.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 

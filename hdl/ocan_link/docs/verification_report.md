@@ -12,7 +12,9 @@ The configurations are those of section 2 of the [verification plan](verificatio
 test is the CAN network model of `tb/`, whose encoding and receiver are checked against six frames of real buses
 (`tb/ocan_tb_can_model_tb.vhd`, 8 tests).
 
-QuestaSim: not run yet.
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 ## 2. Measured values
 
