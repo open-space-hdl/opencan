@@ -58,13 +58,17 @@ architecture sim of ocan_sdo_tb is
     constant NoWord_c : Word_t  := (others => '0');
 
     function u8 (n : natural) return Byte_t is
+        variable R_v : Byte_t;
     begin
-        return std_logic_vector(to_unsigned(n, 8));
+        R_v := std_logic_vector(to_unsigned(n, 8));
+        return R_v;
     end function;
 
     function u32 (n : natural) return Word_t is
+        variable R_v : Word_t;
     begin
-        return std_logic_vector(to_unsigned(n, 32));
+        R_v := std_logic_vector(to_unsigned(n, 32));
+        return R_v;
     end function;
 
     -- Frame of 8 bytes as ocan_dispatch passes it: byte 0 in bits 63 to 56
@@ -131,6 +135,7 @@ architecture sim of ocan_sdo_tb is
     -- sub-index and 4 bytes, least significant byte first
     function muxFrame (cmd : natural; idx : std_logic_vector(15 downto 0); sub : Byte_t; d : Word_t) return Frame_t is
         variable B_v : Bytes_t;
+        variable R_v : Frame_t;
     begin
         B_v(0) := u8(cmd);
         B_v(1) := idx(7 downto 0);
@@ -140,7 +145,8 @@ architecture sim of ocan_sdo_tb is
         B_v(5) := d(15 downto 8);
         B_v(6) := d(23 downto 16);
         B_v(7) := d(31 downto 24);
-        return toFrame(B_v);
+        R_v    := toFrame(B_v);
+        return R_v;
     end function;
 
     -- Frame of a segment: the command byte and bytes 1 to 7 (byte 1 in bits 55 to 48)
@@ -170,75 +176,101 @@ architecture sim of ocan_sdo_tb is
     -- *** Requests of the client ([CiA301] 7.2.4.3) ***
     -- Initiate download, expedited with the size (e = 1, s = 1): 4 - n bytes
     function dlExp (idx : std_logic_vector(15 downto 0); sub : Byte_t; n : natural; d : Word_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#23# + 4 * n, idx, sub, d);
+        R_v := muxFrame(16#23# + 4 * n, idx, sub, d);
+        return R_v;
     end function;
 
     -- Initiate download, expedited without the size (e = 1, s = 0)
     function dlExpNs (idx : std_logic_vector(15 downto 0); sub : Byte_t; d : Word_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#22#, idx, sub, d);
+        R_v := muxFrame(16#22#, idx, sub, d);
+        return R_v;
     end function;
 
     -- Initiate download, segmented with the size (e = 0, s = 1)
     function dlInit (idx : std_logic_vector(15 downto 0); sub : Byte_t; size : Word_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#21#, idx, sub, size);
+        R_v := muxFrame(16#21#, idx, sub, size);
+        return R_v;
     end function;
 
     -- Download segment with k data bytes (n = 7 - k)
     function dlSeg (t : natural; k : natural; c : natural; d : Seg_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return segFrame(16 * t + 2 * (7 - k) + c, d);
+        R_v := segFrame(16 * t + 2 * (7 - k) + c, d);
+        return R_v;
     end function;
 
     function ulInit (idx : std_logic_vector(15 downto 0); sub : Byte_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#40#, idx, sub, NoWord_c);
+        R_v := muxFrame(16#40#, idx, sub, NoWord_c);
+        return R_v;
     end function;
 
     function ulSeg (t : natural) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return segFrame(16#60# + 16 * t, NoSeg_c);
+        R_v := segFrame(16#60# + 16 * t, NoSeg_c);
+        return R_v;
     end function;
 
     function abortReq (idx : std_logic_vector(15 downto 0); sub : Byte_t; code : Word_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#80#, idx, sub, code);
+        R_v := muxFrame(16#80#, idx, sub, code);
+        return R_v;
     end function;
 
     -- *** Replies of the server ([CiA301] 7.2.4.3) ***
     function dlResp (idx : std_logic_vector(15 downto 0); sub : Byte_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#60#, idx, sub, NoWord_c);
+        R_v := muxFrame(16#60#, idx, sub, NoWord_c);
+        return R_v;
     end function;
 
     function dlSegResp (t : natural) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return segFrame(16#20# + 16 * t, NoSeg_c);
+        R_v := segFrame(16#20# + 16 * t, NoSeg_c);
+        return R_v;
     end function;
 
     -- Expedited initiate upload response with k bytes (e = 1, s = 1, n = 4 - k)
     function ulExpResp (idx : std_logic_vector(15 downto 0); sub : Byte_t; k : natural; d : Word_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#43# + 4 * (4 - k), idx, sub, d);
+        R_v := muxFrame(16#43# + 4 * (4 - k), idx, sub, d);
+        return R_v;
     end function;
 
     -- Initiate upload response of a segmented upload (e = 0, s = 1) with the size
     function ulInitResp (idx : std_logic_vector(15 downto 0); sub : Byte_t; size : natural) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#41#, idx, sub, u32(size));
+        R_v := muxFrame(16#41#, idx, sub, u32(size));
+        return R_v;
     end function;
 
     -- Upload segment response with k data bytes (n = 7 - k)
     function ulSegResp (t : natural; k : natural; c : natural; d : Seg_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return segFrame(16 * t + 2 * (7 - k) + c, d);
+        R_v := segFrame(16 * t + 2 * (7 - k) + c, d);
+        return R_v;
     end function;
 
     function abortResp (idx : std_logic_vector(15 downto 0); sub : Byte_t; code : Word_t) return Frame_t is
+        variable R_v : Frame_t;
     begin
-        return muxFrame(16#80#, idx, sub, code);
+        R_v := muxFrame(16#80#, idx, sub, code);
+        return R_v;
     end function;
 
     -- *** Objects of the object model ***

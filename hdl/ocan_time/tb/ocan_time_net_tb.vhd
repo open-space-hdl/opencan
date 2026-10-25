@@ -76,8 +76,10 @@ architecture sim of ocan_time_net_tb is
 
     -- floor(m * 2^24 / 40 MHz) for m cycles, the advance of TM-CT-02 (exact: m * 2^24 < 2^52)
     function advance (m : natural) return unsigned is
+        variable R_v : unsigned(55 downto 0);
     begin
-        return to_unsigned(natural(floor(real(m) * 2.0 ** 24 / 40.0e6)), 56);
+        R_v := to_unsigned(natural(floor(real(m) * 2.0 ** 24 / 40.0e6)), 56);
+        return R_v;
     end function;
 
     signal Clk            : std_logic;

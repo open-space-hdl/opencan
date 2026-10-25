@@ -109,8 +109,10 @@ architecture sim of ocan_core_net_tb is
     end function;
 
     function u8 (n : natural) return std_logic_vector is
+        variable R_v : std_logic_vector(7 downto 0);
     begin
-        return std_logic_vector(to_unsigned(n, 8));
+        R_v := std_logic_vector(to_unsigned(n, 8));
+        return R_v;
     end function;
 
     -- SCET of a time PDO: bytes 0 to 2 the fine time, 3 to 6 the coarse time, least significant byte first
@@ -738,9 +740,11 @@ begin
 
         function muxOf (cmd : natural; idx : natural; sub : natural) return std_logic_vector is
             variable I_v : std_logic_vector(15 downto 0);
+            variable R_v : std_logic_vector(31 downto 0);
         begin
             I_v := std_logic_vector(to_unsigned(idx, 16));
-            return u8(cmd) & I_v(7 downto 0) & I_v(15 downto 8) & u8(sub);
+            R_v := u8(cmd) & I_v(7 downto 0) & I_v(15 downto 8) & u8(sub);
+            return R_v;
         end function;
 
         -- Value of 1 to 7 bytes, least significant byte first in the frame

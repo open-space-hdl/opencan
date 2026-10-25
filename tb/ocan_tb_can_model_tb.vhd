@@ -153,6 +153,7 @@ begin
             variable Data_v : std_logic_vector(63 downto 0);
             variable Dlc_v  : natural;
             variable Rtr_v  : std_logic;
+            variable R_v    : CanFrame_t;
         begin
             Data_v := std_logic_vector(to_unsigned(random(0, 2 ** 30 - 1), 32)) &
                       std_logic_vector(to_unsigned(random(0, 2 ** 30 - 1), 32));
@@ -162,9 +163,11 @@ begin
                 Rtr_v := '1';
             end if;
             if random(0, 1) = 0 then
-                return canStd(2 * random(0, 1023) + idx, Dlc_v, Data_v, Rtr_v);
+                R_v := canStd(2 * random(0, 1023) + idx, Dlc_v, Data_v, Rtr_v);
+                return R_v;
             else
-                return canExt(2 * random(0, 2 ** 27 - 1) + idx, Dlc_v, Data_v, Rtr_v);
+                R_v := canExt(2 * random(0, 2 ** 27 - 1) + idx, Dlc_v, Data_v, Rtr_v);
+                return R_v;
             end if;
         end function;
 
