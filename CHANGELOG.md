@@ -4,7 +4,11 @@ The notable changes of OpenCAN. The versions follow semantic versioning: 0.y.z w
 version for an incompatible change of ports, generics or the object dictionary, a minor version for a feature and a
 patch version for a fix.
 
-## [Unreleased]
+## [0.2.0] - 2026-10-26
+
+The register interface of phase d: `ocan_mib` and the top level `ocan_axi` connect the node to a processor system
+over AXI4-Lite. TRL 3 for phases a to c and for the register interface of phase d: verified by simulation (GHDL and
+QuestaSim, code coverage). The hardware test on a redundant CAN network follows in phase d.
 
 - **Added:** the register interface `ocan_mib`: an AXI4-Lite slave with the control and the bit timing (written only
   while disabled and in range), the status of the node and of both controllers, sticky event and error flags with an
