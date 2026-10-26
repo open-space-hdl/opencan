@@ -24,7 +24,9 @@ the application port with SENDs at random times; the test requires that the mode
 of the run. TC-MB-01
 read and wrote every address, so every unused address read zero after address-dependent patterns.
 
-QuestaSim: runs with the release (one QuestaSim batch, with and without code coverage).
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 `python lint/synth_check.py` (TC-MB-20): the six configurations of section 2 synthesise with GHDL without an inferred
 latch; `BusAccess_g` = "Dual" and `Sjw_g` = 3 with `Tseg2_g` = 2 stop the elaboration with the message of the module.
@@ -73,4 +75,7 @@ The generics of `ocan_core` change only the words of GENERICS, DOMINANT_LIMIT an
 
 ## 4. Coverage
 
-Code coverage with QuestaSim follows with the release (one QuestaSim batch); `docs/coverage.md` will list the result.
+QuestaSim over the full regression of release 0.2.0 ([docs/coverage.md](../../../docs/coverage.md)): statements
+297 of 297, branches 76 of 76, conditions 41 of 42, expressions 25 of 25. The condition not covered is the term
+`ErrInjRegs_g` = false of line 422: QuestaSim does not count a term that is a generic, and both values are
+simulated (section 3).
