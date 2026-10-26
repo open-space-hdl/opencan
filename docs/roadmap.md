@@ -5,14 +5,15 @@ is written and its regression is green.
 
 ## Technology readiness
 
-The core is at **TRL 3** for phases a to c, the slave node of ECSS-E-ST-50-15C: fully verified by simulation. Every
-module passes every test in GHDL and in QuestaSim, with and without code coverage; code coverage is closed or
-justified ([coverage](coverage.md)), and the traceability matrix is complete. The core is not tested on hardware and
-has no flight heritage. The [TRL page](https://openspacehdl.org/trl/) explains what the levels mean for an IP core.
+The core is at **TRL 3** for phases a to c, the slave node of ECSS-E-ST-50-15C, and for the register interface of
+phase d, `ocan_mib` and the top level `ocan_axi`: fully verified by simulation. Every module passes every test in GHDL
+and in QuestaSim, with and without code coverage; code coverage is closed or justified ([coverage](coverage.md)), and
+the traceability matrix is complete. The core is not tested on hardware and has no flight heritage; the hardware test
+on a redundant CAN network (phase d) is the step to TRL 4. The [TRL page](https://openspacehdl.org/trl/) explains
+what the levels mean for an IP core.
 
 | Next level | What is needed | State |
 | --- | --- | --- |
-| TRL 3 of phase d | The AXI4-Lite register wrapper implemented and fully verified by simulation (GHDL and QuestaSim, code coverage closed) | Open |
 | TRL 4 | Synthesis and timing closure on a target FPGA; hardware test on a redundant CAN network with transceivers; hardware test plan and test report | Open |
 
 ## Development phases
@@ -22,7 +23,7 @@ has no flight heritage. The [TRL page](https://openspacehdl.org/trl/) explains w
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
 | c | Application layer services and time distribution | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
-| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | In progress: `ocan_mib` and `ocan_axi` verified with GHDL; QuestaSim with the release, then the hardware test |
+| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | In progress: the register interface `ocan_mib` and the top level `ocan_axi` done (release 0.2.0): verified with GHDL and QuestaSim, code coverage closed or justified; the hardware test is open |
 
 ## Modules
 
@@ -31,7 +32,7 @@ Every module has a specification, an architecture, a verification plan and a ver
 deliberate faults of the RTL that were each simulated with the tests that must detect them. A fault that changes the
 behaviour only after an upset, which the ports cannot inject, is covered by design review; a fault of a connection
 of the top level that the ports of the core cannot provoke, by the bench of its block. QuestaSim ran over all
-modules, with and without code coverage, for release 0.1.0.
+modules, with and without code coverage, for release 0.2.0.
 
 | Module | Phase | Function | GHDL regression | Deliberate faults |
 | --- | --- | --- | --- | --- |
