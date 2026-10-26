@@ -36,8 +36,7 @@ latch; `BusAccess_g` = "Dual" and `Sjw_g` = 3 with `Tseg2_g` = 2 stop the elabor
 
 ## 2. Deliberate faults
 
-36 faults of the RTL were each simulated with the tests that must detect them (`_ocan_work/mib_mut.py` in the work
-directory of the project, not part of the repository): all 36 were detected.
+36 faults of the RTL were each simulated with the tests that must detect them: all 36 were detected.
 
 | Area | Faults | Detected by |
 | --- | --- | --- |
