@@ -24,7 +24,9 @@ the interrupt, the buses or the log of a model node.
 - In the mailbox test (TC-AX-04) the data of a write of one byte read 0000 0000 0000 00ABh in APP_REQ_HI and APP_REQ_LO:
   the least significant byte of the value in bits 7 to 0, as the user guide states.
 
-QuestaSim: runs with the release (one QuestaSim batch, with and without code coverage).
+QuestaSim (Questa Pro Microchip Edition 2024.3): the same tests pass in the regression without code coverage
+(`python run.py --questa -p 1`) and with it (`python run.py --questa --coverage -p 1`); the coverage is in
+[docs/coverage.md](../../../docs/coverage.md).
 
 `python lint/synth_check.py`: `ocan_axi` synthesises with GHDL without an inferred latch in the four configurations of
 the check (the default, the parallel bus access, the minimal set with the error injection registers, no PDOs), and
@@ -61,4 +63,7 @@ bus access architectures, the clause 6 slave and the minimal set, with and witho
 
 ## 4. Coverage
 
-Code coverage with QuestaSim follows with the release (one QuestaSim batch); `docs/coverage.md` will list the result.
+`ocan_axi.vhd` connects `ocan_core`, `ocan_mib` and `olo_base_reset_gen` and has no statement, branch or condition
+of its own, so QuestaSim counts no item in it. The coverage of the instances, merged over all benches including
+this one, is in [docs/coverage.md](../../../docs/coverage.md); the connections are verified by the deliberate
+faults of section 2.
