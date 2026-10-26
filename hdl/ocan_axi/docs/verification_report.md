@@ -32,9 +32,8 @@ the check (the default, the parallel bus access, the minimal set with the error 
 
 ## 2. Deliberate faults
 
-40 faults of the connections were each simulated with the tests that must detect them (`_ocan_work/axi_mut.py` in
-the work directory of the project, not part of the repository): a port of `ocan_core` or of `ocan_mib` with its
-actual replaced by a constant, `open` or a fixed generic.
+40 faults of the connections were each simulated with the tests that must detect them: a port of `ocan_core` or of
+`ocan_mib` with its actual replaced by a constant, `open` or a fixed generic.
 
 | Result | Faults |
 | --- | --- |
