@@ -349,4 +349,4 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | a | This architecture with its decisions; compliance matrix | Review passed |
 | b | `ocan_link`, `ocan_dispatch`, `ocan_nmt`, `ocan_redundancy`: a slave node that joins the network, follows the Redundancy Master and switches the bus | Phase b modules verified, GHDL and QuestaSim |
 | c | `ocan_od`, `ocan_sdo`, `ocan_pdo`, `ocan_time`, `ocan_core`: process data, configuration access and time | All modules verified, coverage closed, TRL 3 |
-| d | AXI4-Lite register wrapper for configuration and status (D6); hardware test on a redundant CAN network with transceivers | TRL 4 |
+| d | AXI4-Lite register wrapper for configuration and status (D6); hardware test on a redundant CAN network with transceivers as part of a reference system of the family | TRL 4 |

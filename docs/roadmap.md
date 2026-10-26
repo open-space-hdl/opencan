@@ -8,13 +8,13 @@ is written and its regression is green.
 The core is at **TRL 3** for phases a to c, the slave node of ECSS-E-ST-50-15C, and for the register interface of
 phase d, `ocan_mib` and the top level `ocan_axi`: fully verified by simulation. Every module passes every test in GHDL
 and in QuestaSim, with and without code coverage; code coverage is closed or justified ([coverage](coverage.md)), and
-the traceability matrix is complete. The core is not tested on hardware and has no flight heritage; the hardware test
-on a redundant CAN network (phase d) is the step to TRL 4. The [TRL page](https://openspacehdl.org/trl/) explains
-what the levels mean for an IP core.
+the traceability matrix is complete. The core is not tested on hardware and has no flight heritage; it reaches TRL 4
+through the hardware test on a redundant CAN network with transceivers as part of a reference system of the family
+(phase d). The [TRL page](https://openspacehdl.org/trl/) explains what the levels mean for an IP core.
 
 | Next level | What is needed | State |
 | --- | --- | --- |
-| TRL 4 | Synthesis and timing closure on a target FPGA; hardware test on a redundant CAN network with transceivers; hardware test plan and test report | Open |
+| TRL 4 | Synthesis and timing closure on a target FPGA; hardware test on a redundant CAN network with transceivers as part of a reference system of the family; hardware test plan and test report of that reference system | Open |
 
 ## Development phases
 
@@ -23,7 +23,7 @@ what the levels mean for an IP core.
 | a | Architecture: scope, architecture decisions, traceability matrix | Done |
 | b | Data link on the nominal and the redundant bus, bus redundancy management and monitoring | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
 | c | Application layer services and time distribution | Done (release 0.1.0): verified with GHDL and QuestaSim, code coverage closed or justified |
-| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network | In progress: the register interface `ocan_mib` and the top level `ocan_axi` done (release 0.2.0): verified with GHDL and QuestaSim, code coverage closed or justified; the hardware test is open |
+| d | AXI4-Lite register wrapper; hardware test on a redundant CAN network as part of a reference system of the family | In progress: the register interface `ocan_mib` and the top level `ocan_axi` done (release 0.2.0): verified with GHDL and QuestaSim, code coverage closed or justified; the hardware test is open |
 
 ## Modules
 
