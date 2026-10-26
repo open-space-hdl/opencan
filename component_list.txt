@@ -9,3 +9,5 @@ hdl/ocan_od
 hdl/ocan_sdo
 hdl/ocan_pdo
 hdl/ocan_core
+hdl/ocan_mib
+hdl/ocan_axi

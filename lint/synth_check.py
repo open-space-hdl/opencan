@@ -10,6 +10,7 @@ synthesizability; resources and timing need the FPGA tools.
 """
 
 import argparse
+import hashlib
 import re
 import subprocess
 import sys
@@ -107,6 +108,27 @@ def configs():
     cfg.append(("ocan_core", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
     cfg.append(("ocan_core", {"MinimalSet_g": "true", "TimePdos_g": "true", **time, "NumRpdo_g": "4"}, "OD-MS-05"))
     cfg.append(("ocan_core", {"MinimalSet_g": "true", "TimePdos_g": "true", **time, "SctCobId_g": "0"}, "OD-MS-03"))
+    # ocan_mib (TC-MB-20): the configurations of the testbench and the generic checks
+    cfg.append(("ocan_mib", {}, None))
+    cfg.append(("ocan_mib", {"ErrInjRegs_g": "true"}, None))
+    cfg.append(("ocan_mib", {"BusAccess_g": "Parallel", "MinimalSet_g": "true", "TimePdos_g": "false",
+                             "AutoRecover_g": "false", "NumRpdo_g": "1", "NumTpdo_g": "3", "FineBits_g": "0",
+                             "SyncStages_g": "4", "DominantLimit_g": "1023", "ClkFrequency_g": "2147483647",
+                             "AutoEnable_g": "false", "Prescaler_g": "1023", "Tseg1_g": "31", "Tseg2_g": "15",
+                             "Sjw_g": "4", "ErrInjRegs_g": "true"}, None))
+    cfg.append(("ocan_mib", {"NumRpdo_g": "3", "NumTpdo_g": "1", "FineBits_g": "24", "SyncStages_g": "2",
+                             "DominantLimit_g": "13", "ClkFrequency_g": "1000000", "Prescaler_g": "1", "Tseg1_g": "2",
+                             "Tseg2_g": "2", "Sjw_g": "1"}, None))
+    for n in (0, 2):
+        cfg.append(("ocan_mib", {"NumRpdo_g": str(n), "NumTpdo_g": str(n)}, None))
+    cfg.append(("ocan_mib", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
+    cfg.append(("ocan_mib", {"Tseg2_g": "2", "Sjw_g": "3"}, "Sjw_g must not exceed Tseg2_g"))
+    # ocan_axi: the configurations of the network testbench; the generic checks are those of the instances
+    cfg.append(("ocan_axi", {}, None))
+    cfg.append(("ocan_axi", {"BusAccess_g": "Parallel", "TimePdos_g": "false", "AutoEnable_g": "false"}, None))
+    cfg.append(("ocan_axi", {"MinimalSet_g": "true", "TimePdos_g": "false", "ErrInjRegs_g": "true"}, None))
+    cfg.append(("ocan_axi", {"NumRpdo_g": "0", "NumTpdo_g": "0"}, None))
+    cfg.append(("ocan_axi", {"BusAccess_g": "Dual"}, "BusAccess_g must be"))
     return cfg
 
 
@@ -116,7 +138,9 @@ def synth(top, generics, expected):
     cmd += [f"-g{name}={value}" for name, value in generics.items()]
     cmd.append(top)
     name = top + "".join(f"_{k[:-2]}{v}" for k, v in generics.items())
-    with open(OUT / f"{name}.vhd", "w") as netlist:
+    # A long name keeps the netlist path below the path length limit of Windows; the result line keeps the full name
+    file = name if len(name) <= 100 else f"{top}_{hashlib.sha1(name.encode()).hexdigest()[:12]}"
+    with open(OUT / f"{file}.vhd", "w") as netlist:
         res = subprocess.run(cmd, stdout=netlist, stderr=subprocess.PIPE, text=True)
     log = res.stderr
     if expected is not None:

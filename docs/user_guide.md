@@ -1,7 +1,8 @@
 # OpenCAN User Guide
 
 OpenCAN is a slave node of ECSS-E-ST-50-15C (CANbus extension protocol) on a nominal and a redundant bus, in
-technology-independent VHDL-2008. This guide is for the integrator of the top level `ocan_core`: the sources, the
+technology-independent VHDL-2008. This guide is for the integrator of the top level `ocan_core` with its native
+ports and of the top level `ocan_axi` with the registers on an AXI4-Lite slave (section 12): the sources, the
 generics, the clock and reset, the interfaces, the protection scope, the integration constraints and the conformance
 to the standard. The [architecture](architecture.md) describes the design, the module documents under `hdl/` the
 requirements and their verification.
@@ -10,11 +11,12 @@ requirements and their verification.
 
 | Library | Sources | Order |
 | --- | --- | --- |
-| `olo` | Open Logic, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.9 (submodule `open-logic`): the areas `base` and `intf` | `open-logic/compile_order.txt` |
-| `opencan` | `hdl/<module>/src/*.vhd` of the nine modules | `compile_order.txt` |
+| `olo` | Open Logic, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.11 (submodule `open-logic`): the areas `base` and `intf` | `open-logic/compile_order.txt` |
+| `opencan` | `hdl/<module>/src/*.vhd` of the eleven modules | `compile_order.txt` |
 
-The top level is `ocan_core` in the library `opencan`. It uses `olo_intf_can` (the CAN controller),
-`olo_base_reset_gen`, `olo_base_strobe_gen` and `olo_base_arb_rr` of Open Logic, and no vendor primitive.
+The top levels are `ocan_core` and `ocan_axi` in the library `opencan`. `ocan_core` uses `olo_intf_can` (the CAN
+controller), `olo_base_reset_gen`, `olo_base_strobe_gen` and `olo_base_arb_rr` of Open Logic, `ocan_axi` in addition
+`olo_axi_lite_slave`; neither uses a vendor primitive.
 
 ## 2. Generics
 
@@ -236,9 +238,11 @@ producer are not part of the core (D1).
 
 Every module is verified by its own testbench with a reference model and by deliberate faults of its RTL; the core by
 a network testbench of the whole node in four configurations (both bus access architectures, the clause 6 slave and
-the minimal set, with and without the time PDOs). The verification reports of the modules state the results. GHDL
-synthesises the core with every combination of `BusAccess_g`, `MinimalSet_g` and `TimePdos_g` without an inferred
-latch (`lint/synth_check.py`).
+the minimal set, with and without the time PDOs). The register interface `ocan_mib` is verified by a testbench with
+a reference model of the register file, `ocan_axi` by a network testbench in which the test plays the software
+through the registers. The verification reports of the modules state the results. GHDL synthesises the core with
+every combination of `BusAccess_g`, `MinimalSet_g` and `TimePdos_g`, and `ocan_mib` and `ocan_axi` in the
+configurations of their testbenches, without an inferred latch (`lint/synth_check.py`).
 
 ## 11. Resources
 
@@ -257,3 +261,85 @@ for a 100 MHz constraint at the slow corner. The configurations are those of the
 
 The longest paths lie in the bit timing logic of the CAN controller and, in the clause 6 slave with the time PDOs, in
 the decode of an object access of the SDO server in the object dictionary.
+
+## 12. Register interface (ocan_axi)
+
+`ocan_axi` is the top level for a processor system: `ocan_core` with the register interface `ocan_mib` on an
+AXI4-Lite slave (decision D6). Its generics are those of `ocan_core` and `AutoEnable_g`, `Prescaler_g`, `Tseg1_g`,
+`Tseg2_g`, `Sjw_g` and `ErrInjRegs_g` of `ocan_mib`; its ports are `Clk`, `Rst`, `S_AxiLite_*` (9-bit byte
+addresses, 32-bit data), `Irq`, `Pin_NodeId`, `Pin_NodeIdCode`, `Can_Tx`, `Can_TxEn` and `Can_Rx`. The PDOs, the
+objects of the user logic, the local time, the status and the events are reached through the registers only; a design
+that needs the native ports uses `ocan_core`. The [register map](../hdl/ocan_mib/docs/register_map.md) lists every
+register and field, `sw/ocan_regs.h` gives the addresses, positions and masks to C software. The AXI4-Lite port is
+synchronous to `Clk`; the byte strobes are not used, so every write writes the whole register.
+
+### 12.1 Start-up
+
+With `AutoEnable_g` = true and the bit timing of the generics the node starts without software, as `ocan_core`. With
+`AutoEnable_g` = false it stays off the bus until the software:
+
+1. writes BIT_TIMING (section 4.2): a write while CONTROL.ENABLE is '1' or with a field out of range is refused and
+   sets ERRORS.CFG_REFUSED;
+2. writes CONTROL with ENABLE = '1' and, if the software answers the objects of the user logic, APP_ENABLE = '1'.
+
+The node then joins the bus after 11 recessive bits and, as the clause 6 slave, sends its boot-up message;
+NODE.NMT_STATE follows the NMT master. To change the bit timing later, clear ENABLE, write BIT_TIMING, set ENABLE.
+
+### 12.2 Flags and interrupt
+
+EVENTS, PDO_EVENTS, ERRORS and LINK_ERRORS hold one sticky flag per event of the node. A write of '1' to a flag clears
+it; an event in the clock cycle of the clearing write keeps it set, so no event is lost between a read and the clear.
+`Irq` is '1' while a flag is set whose bit in the enable register (EVENTS_IRQ_EN and the others) is '1'; IRQ_STATUS
+names the flag registers that cause it. An interrupt routine reads IRQ_STATUS, reads the named flag registers, handles
+the events and writes the handled flags back to clear them.
+
+### 12.3 PDOs
+
+A receive PDO sets its bit of PDO_EVENTS.RPDO_RECEIVED. Read RPDOn_HI first (data bytes 0 to 3, byte 0 in bits 31 to
+24), then RPDOn_LO (bytes 4 to 7): the read of HI takes LO in the same clock cycle, so both words are of one PDO even
+when a new PDO arrives between the two reads.
+
+For a transmit PDO write TPDOn_HI and TPDOn_LO, then write one bit of TPDO_CONTROL: UPDATE copies both words to the
+data of the PDO in one clock cycle, for the synchronous transmission types (the PDO takes them at its next SYNC);
+REQUEST copies them and requests the PDO in the same clock cycle, for the types 254 and 255 and for type 0 (sent at
+the next SYNC). The completion sets TPDO_SENT or TPDO_ABORTED; a request while TPDO_STATUS.BUSY is set has no effect
+and sets TPDO_BUSY.
+
+### 12.4 Objects of the user logic
+
+With CONTROL.APP_ENABLE = '1' an SDO access to an object from 2003h to 9FFFh (section 4.4) reaches the mailbox:
+APP_REQ holds PENDING, read or write, the number of data bytes, the sub-index and the index; APP_REQ_HI and APP_REQ_LO
+the data of a write, the value with its least significant byte in bits 7 to 0 of APP_REQ_LO. The event APP_REQUEST
+can raise the interrupt. The software answers by writing APP_RSP_HI and APP_RSP_LO (the value of a read, same
+layout), APP_RSP_LEN (the number of bytes of a read), APP_RSP_ABORT (0 for success, otherwise the SDO abort code) and
+then APP_RSP_CONTROL.SEND.
+
+The answer must come within 256 ticks (256 ms) of the request: otherwise the core ends the access with 0800 0000h,
+ERRORS.APP_TIMEOUT is set, PENDING is cleared and a later SEND has no effect. With APP_ENABLE = '0' (the reset value)
+every such access ends at once with 0602 0000h (object does not exist), as with the inputs of the application port of
+`ocan_core` at their defaults; clearing APP_ENABLE ends a pending request the same way.
+
+### 12.5 Local time
+
+Read TIME_COARSE first (seconds), then TIME_FINE (sub-seconds in units of 2^-24 s): the read of TIME_COARSE takes the
+fine time of the same clock cycle. TIME_CONTROL.REQUEST requests the Local Time PDO (transmission types 0, 254 and
+255, section 4.5).
+
+### 12.6 Error counters
+
+LINK_A_COUNTS0, LINK_A_COUNTS1, LINK_B_COUNTS0 and LINK_B_COUNTS1 count, per controller, the bit, stuff, CRC, form and
+acknowledgement errors and the dominant timeouts in 8-bit counters. A counter stops at 255, so a count of 255 means
+255 events or more; the transmit and receive error counters of the fault confinement in LINK_A and LINK_B
+(clause 5.6.2c) are separate and do not saturate this way. A write of any value to a counter register clears all
+counters of that register (an event in the clock cycle of the write is counted after the clearing); a read does not
+clear them. Software that evaluates the error rate reads and clears each counter register more often than 255 errors
+can occur: on a bus with a permanent fault an error frame can follow every frame, so poll at least every few
+milliseconds while the counts are high, and rely on the LINK_ERRORS flags to notice the first error.
+
+### 12.7 Error injection
+
+With `ErrInjRegs_g` = true ERRINJ_SELECT, ERRINJ_MASK0, ERRINJ_MASK1 and ERRINJ_CONTROL drive the test inputs of
+`ocan_core` (section 2.6 of the [specification of `ocan_mib`](../hdl/ocan_mib/docs/specification.md)): upsets of the
+protected parameters and of the NODE-ID copies, a dominant transmit bit, an inverted stop state. They are for test
+systems; a flight configuration keeps `ErrInjRegs_g` = false, in which case the registers read zero and the test
+inputs are constant '0'.

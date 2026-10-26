@@ -60,6 +60,17 @@ jobs:
         run: |
           python run.py --compile-order
           git diff --exit-code compile_order.txt
+      - name: Register map up to date
+        run: python tools/regmap.py --check
+      - name: A stale register map fails the check
+        run: |
+          echo "| stale |" >> hdl/ocan_mib/docs/register_map.md
+          if out=$(python tools/regmap.py --check); then
+            echo "a stale register map passed python tools/regmap.py --check"
+            exit 1
+          fi
+          echo "$out" | grep "Not up to date (run python tools/regmap.py)"
+          git checkout -- hdl/ocan_mib/docs/register_map.md
       - name: ECSS compliance matrix
         run: python tools/compliance.py --check
       - name: A stale compliance matrix fails the check

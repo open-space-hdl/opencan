@@ -34,29 +34,33 @@ Closure rules:
 
 ## 2. Result
 
-Run on 2026-10-25 with Open Logic 4.7.0-ft.9: 356 tests of the 17 testbenches, all passed, 77 minutes in one
-simulator process; without code coverage the same 356 tests pass (72 minutes). Numbers are covered/total bins
-per file; bold marks a metric with misses.
+Run on 2026-10-26 with Open Logic 4.7.0-ft.11: 418 tests of the 19 testbenches, all passed, 72 minutes in one
+simulator process; without code coverage the same 418 tests pass (71 minutes). Numbers are covered/total bins
+per file; bold marks a metric with misses. `ocan_axi.vhd` connects `ocan_core`, `ocan_mib` and the reset
+synchroniser and has no statement, branch or condition of its own, so it has no row; its connections are verified by
+the deliberate faults of its verification report.
 
 | File | Statements | Branches | FSM states | FSM transitions | Conditions | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `ocan_core.vhd` | 44 / 44 | 8 / 8 |  |  |  | 2 / 2 |
 | `ocan_dispatch.vhd` | 207 / 207 | 94 / 94 |  |  | **56 / 58** | 18 / 18 |
 | `ocan_link.vhd` | 127 / 127 | 62 / 62 | 4 / 4 | 7 / 7 | 22 / 22 | 10 / 10 |
+| `ocan_mib.vhd` | 297 / 297 | 76 / 76 |  |  | **41 / 42** | 25 / 25 |
 | `ocan_nmt.vhd` | 124 / 124 | 97 / 97 | 3 / 3 | 5 / 5 | **62 / 64** | 14 / 14 |
 | `ocan_od.vhd` | **373 / 375** | **214 / 216** |  |  | **90 / 92** | **29 / 33** |
 | `ocan_pdo.vhd` | 110 / 110 | 52 / 52 |  |  | 17 / 17 | 6 / 6 |
 | `ocan_redundancy.vhd` | 131 / 131 | 59 / 59 | 4 / 4 | 10 / 10 | **34 / 35** | 6 / 6 |
 | `ocan_sdo.vhd` | **178 / 179** | **94 / 95** |  |  | **21 / 22** | 11 / 11 |
 | `ocan_time.vhd` | **135 / 136** | **53 / 54** | 3 / 3 | 5 / 5 | **13 / 14** | 6 / 6 |
-| Total | 1429 / 1433 (99.7 %) | 733 / 737 (99.5 %) | 14 / 14 (100.0 %) | 27 / 27 (100.0 %) | 315 / 324 (97.2 %) | 102 / 106 (96.2 %) |
+| Total | 1726 / 1730 (99.8 %) | 809 / 813 (99.5 %) | 14 / 14 (100.0 %) | 27 / 27 (100.0 %) | 356 / 366 (97.3 %) | 127 / 131 (96.9 %) |
 
 Every item that the ports can reach is covered. The items not covered are listed in section 4 with the reason why no
-input sequence reaches them. `ocan_core`, `ocan_link` and `ocan_pdo` are covered completely.
+input sequence reaches them. `ocan_core`, `ocan_link` and `ocan_pdo` are covered completely, `ocan_mib` except one
+generic term. The items not covered in the files of release 0.1.0 are the same as in its run.
 
 ## 3. Gaps found and closed
 
-A QuestaSim run with code coverage before the release showed reachable behaviour that no test exercised. The checks
+A QuestaSim run with code coverage before release 0.1.0 showed reachable behaviour that no test exercised. The checks
 below close these gaps; they extend existing tests of the direct benches.
 
 | Gap | Test |
@@ -84,6 +88,7 @@ core was not affected.
 | `ocan_dispatch.vhd` | Conditions, line 242 `TimePdos_g` = false and line 248 `SdoServer_g` = false | Generic terms (section 1); both values are simulated in the configurations of the core bench |
 | `ocan_nmt.vhd` | Conditions, line 263 `MinimalSet_g` = false and line 327 `MinimalSet_g` = true | Generic terms |
 | `ocan_redundancy.vhd` | Condition, line 222 `MinimalSet_g` = true | Generic term |
+| `ocan_mib.vhd` | Condition, line 422 `ErrInjRegs_g` = false | Generic term; both values are simulated in the configurations of the benches of `ocan_mib` and `ocan_axi` |
 | `ocan_od.vhd` | Branches and statements, lines 1090 and 1146: `when others => null` of the read and the write values | Every readable and every writable object has its own branch; an access to another object is refused before |
 | `ocan_od.vhd` | Conditions, line 219 `e` > 9 with `e` >= 6 and line 229 `e` < 2 | `entryExists` is called for the entries 0 to 11, where 10 and 11 are decided before, and `cobBase` for 2 to 9 only |
 | `ocan_od.vhd` | Expressions, lines 244 and 246 of `restricted` | The free ranges of clause 9.5a (line 246) lie inside the last range of \[CiA301\] table 40, which line 244 already restricts from 780h on; line 246 states the clause and can never change the result, and in line 244 an identifier at or above 780h is decided by its last term |
