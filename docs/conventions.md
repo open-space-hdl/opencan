@@ -121,7 +121,12 @@ its own unit testbench. `hdl/<module>/README.md` links the four documents and ex
   runs on its head; afterwards only `docs/coverage.md`, the run records of the verification reports, the version and
   the change log change, no HDL. The branch merges into `main` through a pull request, the merge is tagged `vX.Y.Z`,
   and `main` is merged back into `develop`. A fix of a release is a branch `hotfix/x.y.z` from `main` with the same
-  evidence.
+  evidence. A correction of the documentation alone is a branch `hotfix/docs-<topic>` from `main` without a new
+  version; the same change goes to `develop` through its own pull request.
+- Before the pull request of a release or a hotfix, the documentation site is built locally
+  (`mkdocs build --strict -f tools/docs/mkdocs.yml`), and the text of every page is checked for absolute local paths,
+  names of files or directories outside the repository, tool licence terms, unfilled placeholders and em-dashes. The
+  published site gets the same check after the deploy. The documents of the repository never name a file outside it.
 - Versions follow semantic versioning: 0.y.z while the core is at TRL 3, 1.0.0 with TRL 4 (hardware test). The major
   version changes with an incompatible change of ports, generics, stream formats or register map, the minor version
   with a new feature, the patch version with a fix.
