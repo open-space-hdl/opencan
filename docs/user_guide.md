@@ -11,7 +11,7 @@ requirements and their verification.
 
 | Library | Sources | Order |
 | --- | --- | --- |
-| `olo` | Open Logic, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.11 (submodule `open-logic`): the areas `base` and `intf` | `open-logic/compile_order.txt` |
+| `olo` | Open Logic, fork open-space-hdl/open-logic-ft, tag 4.8.0-ft.2 (1f4a6c3), based on Open Logic 4.8.0 (submodule `open-logic`): the areas `base` and `intf`, for `ocan_axi` also `axi` | `open-logic/compile_order.txt` |
 | `opencan` | `hdl/<module>/src/*.vhd` of the eleven modules | `compile_order.txt` |
 
 The top levels are `ocan_core` and `ocan_axi` in the library `opencan`. `ocan_core` uses `olo_intf_can` (the CAN
