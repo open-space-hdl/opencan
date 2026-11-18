@@ -54,8 +54,8 @@ set at runtime from the system clock.
 ### Project
 
 OpenCAN belongs to the Open Space HDL family (`ocan_` prefix, VHDL library `opencan`). It builds on Open Logic
-4.7.0-ft.11 (fork open-space-hdl/open-logic-ft, `fault-tolerant` branch) for the CAN controller, the bit timing,
-the arbiter, the strobe generator and the synchronisers.
+4.8.0-ft.2 (fork open-space-hdl/open-logic-ft, `fault-tolerant` branch, based on Open Logic 4.8.0) for the CAN
+controller, the bit timing, the arbiter, the strobe generator and the synchronisers.
 
 ### References
 
@@ -66,7 +66,7 @@ the arbiter, the strobe generator and the synchronisers.
 | \[ISO11898\] | ISO 11898-1:2003, Road vehicles, Controller area network (CAN), Part 1: Data link layer and physical signalling |
 | \[Bosch\] | CAN Specification 2.0, Robert Bosch GmbH, 1991 |
 | \[CCSDS301\] | CCSDS 301.0-B-4, Time code formats |
-| \[OLO\] | Open Logic VHDL library, fork open-space-hdl/open-logic-ft, tag 4.7.0-ft.11 (227eecd) |
+| \[OLO\] | Open Logic VHDL library, fork open-space-hdl/open-logic-ft, tag 4.8.0-ft.2 (1f4a6c3), based on Open Logic 4.8.0 |
 
 CiA® and CANopen® are registered trademarks of CAN in Automation e.V.
 
@@ -349,4 +349,4 @@ requirements and test cases of every clause; a clause whose owner module has no 
 | a | This architecture with its decisions; compliance matrix | Review passed |
 | b | `ocan_link`, `ocan_dispatch`, `ocan_nmt`, `ocan_redundancy`: a slave node that joins the network, follows the Redundancy Master and switches the bus | Phase b modules verified, GHDL and QuestaSim |
 | c | `ocan_od`, `ocan_sdo`, `ocan_pdo`, `ocan_time`, `ocan_core`: process data, configuration access and time | All modules verified, coverage closed, TRL 3 |
-| d | AXI4-Lite register wrapper for configuration and status (D6); hardware test on a redundant CAN network with transceivers | TRL 4 |
+| d | AXI4-Lite register wrapper for configuration and status (D6); hardware test on a redundant CAN network with transceivers as part of a reference system of the family | TRL 4 |

@@ -25,9 +25,10 @@ ports. A reference model checks every register and every output of `ocan_mib` in
 runs the node on the network through its registers. Code coverage is closed or every remaining miss is justified
 ([coverage](docs/coverage.md)). The [compliance matrix](docs/compliance.md) assigns every clause of the standard to a
 building block of the architecture or marks it out of scope, and traces every clause in scope to its requirements and
-test cases. The core has not been tested on hardware and has no flight heritage; the hardware test on a redundant CAN
-network (phase d) is the step to TRL 4. See [what the levels mean](https://openspacehdl.org/trl/) and the steps to the
-next level in the [roadmap](docs/roadmap.md#technology-readiness). The [user guide](docs/user_guide.md) describes the
+test cases. The core has not been tested on hardware and has no flight heritage; it reaches TRL 4 through the hardware
+test on a redundant CAN network with transceivers as part of a reference system of the family (phase d). See
+[what the levels mean](https://openspacehdl.org/trl/) and the steps to the next level in the
+[roadmap](docs/roadmap.md#technology-readiness). The [user guide](docs/user_guide.md) describes the
 integration and the conformance.
 
 ## Documentation
