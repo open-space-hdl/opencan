@@ -40,6 +40,9 @@ per file; bold marks a metric with misses. `ocan_axi.vhd` connects `ocan_core`, 
 synchroniser and has no statement, branch or condition of its own, so it has no row; its connections are verified by
 the deliberate faults of its verification report.
 
+The run applies to release 0.2.1 (Open Logic 4.8.0-ft.2): no source of `hdl/<module>/src` and no testbench changed
+since 0.2.0, and the Open Logic files that OpenCAN uses are identical at 4.7.0-ft.11 and 4.8.0-ft.2.
+
 | File | Statements | Branches | FSM states | FSM transitions | Conditions | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `ocan_core.vhd` | 44 / 44 | 8 / 8 |  |  |  | 2 / 2 |
